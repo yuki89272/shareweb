@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>國中產題品質報告</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:        #f9f9f7;
+    --surface:   #fcfcfb;
+    --surface-2: #f2f1ec;
+    --text-1:    #0b0b0b;
+    --text-2:    #52514e;
+    --text-3:    #898781;
+    --border:    rgba(11,11,11,0.10);
+
+    --accent:      #2a78d6;
+    --cat-missing: #2a78d6;
+    --cat-class:   #eb6834;
+    --cat-dup:     #1baf7a;
+    --cat-other:   #eda100;
+    --cat-latex:   #b3b0a5;
+    --cat-neutral: #898781;
+
+    --heat-1: rgba(208,59,59,0.08);
+    --heat-2: rgba(208,59,59,0.17);
+    --heat-3: rgba(208,59,59,0.27);
+    --heat-4: rgba(208,59,59,0.40);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:        #0d0d0d;
+      --surface:   #1a1a19;
+      --surface-2: #202020;
+      --text-1:    #ffffff;
+      --text-2:    #c3c2b7;
+      --text-3:    #898781;
+      --border:    rgba(255,255,255,0.10);
+
+      --accent:      #3987e5;
+      --cat-missing: #3987e5;
+      --cat-class:   #d95926;
+      --cat-dup:     #199e70;
+      --cat-other:   #c98500;
+      --cat-latex:   #55534c;
+      --cat-neutral: #898781;
+
+      --heat-1: rgba(230,103,103,0.14);
+      --heat-2: rgba(230,103,103,0.24);
+      --heat-3: rgba(230,103,103,0.34);
+      --heat-4: rgba(230,103,103,0.48);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:        #0d0d0d;
+    --surface:   #1a1a19;
+    --surface-2: #202020;
+    --text-1:    #ffffff;
+    --text-2:    #c3c2b7;
+    --text-3:    #898781;
+    --border:    rgba(255,255,255,0.10);
+
+    --accent:      #3987e5;
+    --cat-missing: #3987e5;
+    --cat-class:   #d95926;
+    --cat-dup:     #199e70;
+    --cat-other:   #c98500;
+    --cat-latex:   #55534c;
+    --cat-neutral: #898781;
+
+    --heat-1: rgba(230,103,103,0.14);
+    --heat-2: rgba(230,103,103,0.24);
+    --heat-3: rgba(230,103,103,0.34);
+    --heat-4: rgba(230,103,103,0.48);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    background:var(--bg);
+    color:var(--text-1);
+    font-family:"Noto Sans TC","Segoe UI",system-ui,sans-serif;
+    line-height:1.7;
+  }
+  .page{
+    max-width:960px;
+    margin:0 auto;
+    padding:64px 28px 96px;
+    display:flex;
+    flex-direction:column;
+    gap:56px;
+  }
+  h1,h2,h3{
+    font-family:"Noto Serif TC",serif;
+    text-wrap:balance;
+    margin:0;
+    color:var(--text-1);
+  }
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  /* ---- masthead ---- */
+  .masthead{ display:flex; flex-direction:column; gap:14px; border-bottom:1px solid var(--border); padding-bottom:36px; }
+  .eyebrow{
+    font-size:12.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent);
+  }
+  .masthead h1{ font-size:38px; font-weight:900; line-height:1.25; }
+  .masthead .sub{ font-size:16px; color:var(--text-2); max-width:66ch; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:6px; font-size:13.5px; color:var(--text-3); }
+  .meta-row span b{ color:var(--text-2); font-weight:600; }
+
+  /* ---- stat tiles ---- */
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .stat{ background:var(--surface); padding:20px 18px 18px; display:flex; flex-direction:column; gap:8px; border-top:3px solid var(--stat-accent, var(--cat-neutral)); }
+  .stat .label{ font-size:12px; color:var(--text-3); line-height:1.5; }
+  .stat .value{ font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:26px; font-weight:600; letter-spacing:-.01em; }
+  .stat .note{ font-size:12px; color:var(--text-2); }
+
+  section{ display:flex; flex-direction:column; gap:18px; }
+  .section-head{ display:flex; flex-direction:column; gap:6px; }
+  .section-head h2{ font-size:22px; font-weight:700; }
+  .section-head p{ font-size:14.5px; color:var(--text-2); max-width:66ch; margin:0; }
+
+  /* ---- table ---- */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
+  table{ border-collapse:collapse; width:100%; min-width:920px; table-layout:fixed; font-size:13.5px; }
+  thead th{
+    text-align:left; font-weight:600; color:var(--text-2); font-size:12px;
+    letter-spacing:.01em; line-height:1.45;
+    padding:11px 12px; border-bottom:1px solid var(--border); white-space:normal;
+    vertical-align:bottom;
+    border-top:3px solid var(--th-accent, transparent);
+  }
+  thead th .sub{ display:block; font-weight:400; color:var(--text-3); font-size:10.5px; margin-top:2px; }
+  tbody td{ padding:11px 12px; border-bottom:1px solid var(--border); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.num, th.num{ text-align:right; font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  tr.total td{ font-weight:700; background:var(--surface-2); }
+  .file-note{ color:var(--text-3); font-size:12.5px; }
+  td.heat-1{ background:var(--heat-1); }
+  td.heat-2{ background:var(--heat-2); }
+  td.heat-3{ background:var(--heat-3); }
+  td.heat-4{ background:var(--heat-4); }
+  col.c-batch{ width:8%; }
+  col.c-file{ width:15%; }
+  col.c-count{ width:9%; }
+  col.c-rate{ width:13.6%; }
+  .legend-strip{ display:flex; flex-wrap:wrap; gap:14px 20px; font-size:12px; color:var(--text-3); }
+  .legend-strip span{ display:inline-flex; align-items:center; gap:6px; }
+  .legend-strip i{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+
+  /* ---- category defs ---- */
+  .cat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:680px){ .cat-grid{ grid-template-columns:1fr; } }
+  .cat-card{
+    background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--cat-accent, var(--border));
+    border-radius:8px 10px 10px 8px;
+    padding:18px 20px; display:flex; flex-direction:column; gap:8px;
+  }
+  .cat-card.excluded{ background:transparent; border-style:dashed; border-left-style:solid; }
+  .cat-title{ display:flex; align-items:center; gap:9px; font-weight:700; font-size:15px; }
+  .swatch{ width:11px; height:11px; border-radius:3px; flex:none; }
+  .cat-card p{ margin:0; font-size:13.5px; color:var(--text-2); }
+  .cat-count{ margin-left:auto; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:13px; color:var(--text-3); }
+
+  /* ---- composition list ---- */
+  .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:24px 24px 20px; }
+  .comp-list{ display:flex; flex-direction:column; gap:12px; }
+  .comp-row{ display:grid; grid-template-columns:150px 1fr 100px; align-items:center; gap:14px; }
+  .comp-row .name{ font-size:13.5px; color:var(--text-2); display:flex; align-items:center; gap:8px; }
+  .comp-track{ height:10px; border-radius:5px; background:var(--surface-2); overflow:hidden; }
+  .comp-fill{ height:100%; border-radius:5px; }
+  .comp-row .amount{ text-align:right; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:13px; color:var(--text-1); }
+  @media (max-width:600px){ .comp-row{ grid-template-columns:110px 1fr 80px; } }
+
+  /* ---- footnote ---- */
+  .footnote{ font-size:12.5px; color:var(--text-3); border-top:1px solid var(--border); padding-top:20px; display:flex; flex-direction:column; gap:8px; }
+  .footnote ul{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <div class="eyebrow">品質稽核報告 · 產題流程</div>
+    <h1>國中產題品質報告</h1>
+    <p class="sub">彙整 0724、0813、0817、8/18 四批國中 AI 產題的人工檢視結果，依序排除 LaTeX 顯示問題、分類修改、題目相似、缺圖後，分別計算五種口徑的錯誤率，計算方式與國小產題品質報告一致。</p>
+    <div class="meta-row">
+      <span>報告日期 <b>2026-09-02</b></span>
+      <span>資料來源 <b>國中題目問題列表（4 份檢視文件）</b></span>
+      <span>涵蓋範圍 <b>國中數學，4 批次，共 2,792 題</b></span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat" style="--stat-accent:var(--cat-neutral)">
+      <div class="label">全部問題比例<br>（含 LaTeX）</div>
+      <div class="value tabular">13.00%</div>
+      <div class="note">363 題 ÷ 2,792 題</div>
+    </div>
+    <div class="stat" style="--stat-accent:var(--cat-latex)">
+      <div class="label">錯誤率①<br>不含 LaTeX</div>
+      <div class="value tabular">9.42%</div>
+      <div class="note">263 題 ÷ 2,792 題</div>
+    </div>
+    <div class="stat" style="--stat-accent:var(--cat-class)">
+      <div class="label">錯誤率②<br>不含 LaTeX、分類修改</div>
+      <div class="value tabular">8.77%</div>
+      <div class="note">245 題 ÷ 2,792 題</div>
+    </div>
+    <div class="stat" style="--stat-accent:var(--cat-dup)">
+      <div class="label">錯誤率③<br>不含 LaTeX、分類修改、相似</div>
+      <div class="value tabular">4.41%</div>
+      <div class="note">123 題 ÷ 2,792 題</div>
+    </div>
+    <div class="stat" style="--stat-accent:var(--cat-missing)">
+      <div class="label">錯誤率④<br>不含 LaTeX、分類修改、相似、缺圖</div>
+      <div class="value tabular">3.40%</div>
+      <div class="note">95 題 ÷ 2,792 題</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>批次總覽與五種錯誤率</h2>
+      <p>四批產題分別於 7/24、8/13、8/17、8/18 產出，經人工逐題檢視後列出問題清單。下表依排除範圍不同，同時列出五種口徑的錯誤率；欄位標頭色條對應該欄「新排除」的問題類型，儲存格底色依數值高低加深（門檻與國小報告相同，兩份報告可直接比色）。</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <colgroup>
+          <col class="c-batch"><col class="c-file"><col class="c-count">
+          <col class="c-rate"><col class="c-rate"><col class="c-rate"><col class="c-rate"><col class="c-rate">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>批次</th>
+            <th>問題列表文件</th>
+            <th class="num">產題數</th>
+            <th class="num" style="--th-accent:var(--cat-neutral)">全部問題錯誤率<span class="sub">含全部問題類型</span></th>
+            <th class="num" style="--th-accent:var(--cat-latex)">錯誤率①<span class="sub">排除 LaTeX 跑版</span></th>
+            <th class="num" style="--th-accent:var(--cat-class)">錯誤率②<span class="sub">另排除分類修改</span></th>
+            <th class="num" style="--th-accent:var(--cat-dup)">錯誤率③<span class="sub">再排除題目相似</span></th>
+            <th class="num" style="--th-accent:var(--cat-missing)">錯誤率④<span class="sub">再排除缺圖</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>0724</td>
+            <td class="file-note">0724國中.docx</td>
+            <td class="num tabular">306</td>
+            <td class="num tabular heat-4">9.80%</td>
+            <td class="num tabular heat-3">7.84%</td>
+            <td class="num tabular heat-3">7.19%</td>
+            <td class="num tabular heat-3">7.19%</td>
+            <td class="num tabular heat-3">6.21%</td>
+          </tr>
+          <tr>
+            <td>0813</td>
+            <td class="file-note">0813國中.docx</td>
+            <td class="num tabular">289</td>
+            <td class="num tabular heat-4">12.46%</td>
+            <td class="num tabular heat-3">7.61%</td>
+            <td class="num tabular heat-3">7.61%</td>
+            <td class="num tabular heat-3">6.23%</td>
+            <td class="num tabular heat-1">3.46%</td>
+          </tr>
+          <tr>
+            <td>0817</td>
+            <td class="file-note">0817國中.docx</td>
+            <td class="num tabular">1,334</td>
+            <td class="num tabular heat-4">13.94%</td>
+            <td class="num tabular heat-4">9.97%</td>
+            <td class="num tabular heat-4">9.45%</td>
+            <td class="num tabular heat-2">4.65%</td>
+            <td class="num tabular heat-1">3.37%</td>
+          </tr>
+          <tr>
+            <td>8/18</td>
+            <td class="file-note">0818國中.docx</td>
+            <td class="num tabular">863</td>
+            <td class="num tabular heat-4">12.86%</td>
+            <td class="num tabular heat-4">9.73%</td>
+            <td class="num tabular heat-4">8.69%</td>
+            <td class="num tabular heat-1">2.43%</td>
+            <td class="num tabular heat-1">2.43%</td>
+          </tr>
+          <tr class="total">
+            <td>總計</td>
+            <td class="file-note">—</td>
+            <td class="num tabular">2,792</td>
+            <td class="num tabular heat-4">13.00%</td>
+            <td class="num tabular heat-4">9.42%</td>
+            <td class="num tabular heat-4">8.77%</td>
+            <td class="num tabular heat-2">4.41%</td>
+            <td class="num tabular heat-1">3.40%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend-strip">
+      <span><i style="background:var(--heat-1)"></i>2–4%</span>
+      <span><i style="background:var(--heat-2)"></i>4–6%</span>
+      <span><i style="background:var(--heat-3)"></i>6–8%</span>
+      <span><i style="background:var(--heat-4)"></i>8% 以上</span>
+    </div>
+    <p class="file-note">國中四批檢視文件命名皆與產題日一致（0724、0813、0817、0818）。錯誤率①②整體偏高主要來自「題目相似」與「分類修改」兩類；排除後（錯誤率③④），內容本身的問題率降到 2–7%，與國小報告相近。</p>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>問題分類定義</h2>
+      <p>問題分類與計算標準與國小報告相同，可歸為四種產題流程相關類型，另有一種為平台顯示層問題、不計入任何一種錯誤率。色條與上表欄位標頭一一對應。</p>
+    </div>
+    <div class="cat-grid">
+      <div class="cat-card" style="--cat-accent:var(--cat-missing)">
+        <div class="cat-title"><span class="swatch" style="background:var(--cat-missing)"></span>缺圖／缺表<span class="cat-count">28 題</span></div>
+        <p>題目提到「如附圖」但實際缺圖。產題流程最後自動檢查時，AI 判定題目不需要圖片而刪除圖片，但部分題目未依 prompt 規定同步修改題目文字。8/18 批次未發現此類問題。</p>
+      </div>
+      <div class="cat-card" style="--cat-accent:var(--cat-class)">
+        <div class="cat-title"><span class="swatch" style="background:var(--cat-class)"></span>題目分類修改<span class="cat-count">18 題</span></div>
+        <p>部分題目的知識點分類定義較模稜兩可，經人工檢視後修改分類。已同步修改出題概念 prompt 並增加特殊規則，預期後續批次可改善。0813 批次未發現此類問題。</p>
+      </div>
+      <div class="cat-card" style="--cat-accent:var(--cat-dup)">
+        <div class="cat-title"><span class="swatch" style="background:var(--cat-dup)"></span>題目相似（重複）<span class="cat-count">122 題</span></div>
+        <p>此次產題為分批產生，未特別加上「檢視是否與既有題庫重複」的機制，導致同一知識點下出現大量過於相似的題目，尤以 0817、0818 兩批最集中。已於產題程序中加入既有題庫比對檢查。</p>
+      </div>
+      <div class="cat-card" style="--cat-accent:var(--cat-other)">
+        <div class="cat-title"><span class="swatch" style="background:var(--cat-other)"></span>其他內容問題<span class="cat-count">95 題</span></div>
+        <p>不屬於以上三類的個別內容瑕疵，例如圖片與解答／解析不符、迷思分析數值誤植、解析使用高中名詞或簡體字、題目情境不合現實、選項設計不良等。</p>
+      </div>
+    </div>
+    <div class="cat-card excluded" style="--cat-accent:var(--cat-latex)">
+      <div class="cat-title"><span class="swatch" style="background-image:repeating-linear-gradient(45deg, var(--cat-latex), var(--cat-latex) 2px, transparent 2px, transparent 5px); border:1px solid var(--cat-latex)"></span>LaTeX 跑版（不計入任何一種錯誤率）<span class="cat-count">100 題</span></div>
+      <p>非產題程序造成的問題，屬平台顯示端的呈現問題（如 \neq、\text 語法缺漏導致跑版），故不列入 AI 產題錯誤率計算，僅併陳供參考。國中批次的 LaTeX 問題數量較國小明顯偏多。</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>問題類型佔比（累計）</h2>
+      <p>263 題標記問題（不含 LaTeX）依類型分布，題目相似（重複）占比近半，與國小報告以缺圖／缺表為主的結構明顯不同。</p>
+    </div>
+    <div class="chart-card">
+      <div class="comp-list">
+        <div class="comp-row">
+          <div class="name"><span class="swatch" style="background:var(--cat-dup)"></span>題目相似（重複）</div>
+          <div class="comp-track"><div class="comp-fill" style="width:46.4%; background:var(--cat-dup)"></div></div>
+          <div class="amount">122 題 · 46.4%</div>
+        </div>
+        <div class="comp-row">
+          <div class="name"><span class="swatch" style="background:var(--cat-other)"></span>其他內容問題</div>
+          <div class="comp-track"><div class="comp-fill" style="width:36.1%; background:var(--cat-other)"></div></div>
+          <div class="amount">95 題 · 36.1%</div>
+        </div>
+        <div class="comp-row">
+          <div class="name"><span class="swatch" style="background:var(--cat-missing)"></span>缺圖／缺表</div>
+          <div class="comp-track"><div class="comp-fill" style="width:10.6%; background:var(--cat-missing)"></div></div>
+          <div class="amount">28 題 · 10.6%</div>
+        </div>
+        <div class="comp-row">
+          <div class="name"><span class="swatch" style="background:var(--cat-class)"></span>題目分類修改</div>
+          <div class="comp-track"><div class="comp-fill" style="width:6.8%; background:var(--cat-class)"></div></div>
+          <div class="amount">18 題 · 6.8%</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footnote">
+    <div><b style="color:var(--text-2)">方法論與備註</b></div>
+    <ul>
+      <li>資料來源為「國中題目問題列表」資料夾中 0724、0813、0817、0818 共 4 份人工檢視文件。</li>
+      <li>計算方式：文件中每一筆列出的題號（DB 編號）或問題敘述視為一筆「標記問題」；同一筆記錄中提及多個相似題號時，依實際列出的題號數計入。同一題號若因不同原因被分別列出兩次（例如同時有分類修改與內容瑕疵），則分別計入對應類別。</li>
+      <li>五種錯誤率定義（分母皆為該批產題數）：全部問題錯誤率＝缺圖＋分類修改＋題目相似＋其他內容問題＋LaTeX跑版；錯誤率①排除 LaTeX 跑版；錯誤率②另排除分類修改；錯誤率③再另排除題目相似；錯誤率④再另排除缺圖，僅計其他內容問題。</li>
+      <li>0817 批次文件中一筆「分類改為外心」的記錄原列於「其他」段落，本報告依內容性質歸入「題目分類修改」類別計算。</li>
+      <li>表格儲存格底色為數值熱區提示，門檻與國小產題品質報告一致（2% 以下不加色，往上依 2–4% / 4–6% / 6–8% / 8% 以上四級加深），僅供快速掃視，正式數據請以百分比數字為準。</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
