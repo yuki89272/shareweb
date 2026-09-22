@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>會考樣張（2 題計算題）｜考後數據分析報告</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb;
+    --plane: #f2f1ee;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface: #1a1a19;
+      --plane: #0d0d0d;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-2: #d95926;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 32px 64px;
+    background: var(--plane); color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 0 0 6px; border-left: 4px solid var(--series-1); padding-left: 10px; }
+  h3 { font-size: 14px; margin: 0 0 8px; color: var(--text-secondary); }
+  .sub { color: var(--text-secondary); font-size: 13px; margin: 0; }
+  .note { color: var(--text-secondary); font-size: 12.5px; margin: 4px 0 12px; line-height: 1.6; }
+  section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 22px; margin: 0 0 20px;
+  }
+  .report-header { background: none; border: none; padding: 4px 0 0; }
+
+  .animate { animation: rise 0.5s ease-out both; animation-delay: calc(var(--delay, 0) * 70ms); }
+  @media (prefers-reduced-motion: reduce) { .animate { animation: none; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .tiles { display: flex; flex-wrap: wrap; gap: 12px; }
+  .tile {
+    flex: 1 1 140px; background: var(--plane); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .tile-value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tile-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .tile-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .table-wrap { overflow: auto; }
+  .scroll-x { max-width: 100%; }
+  table.data-table {
+    border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums;
+  }
+  table.data-table th, table.data-table td {
+    border-bottom: 1px solid var(--grid); border-right: 1px solid var(--grid);
+    padding: 6px 10px; text-align: left; white-space: nowrap;
+  }
+  table.data-table th:last-child, table.data-table td:last-child { border-right: none; }
+  table.data-table th { color: var(--text-secondary); font-weight: 600; background: var(--plane); }
+  table.data-table td.num { text-align: right; }
+  table.data-table td.strong { font-weight: 700; }
+  table.data-table td.muted, th.muted-head { color: var(--muted); }
+  table.data-table td.wrap { white-space: normal; min-width: 220px; }
+  table.data-table tbody tr:hover { background: var(--plane); }
+  table.sticky-head thead th { position: sticky; top: 0; z-index: 2; }
+  table.sticky-col tbody td:first-child, table.sticky-col thead th:first-child {
+    position: sticky; left: 0; background: var(--surface); z-index: 1;
+  }
+  table.sticky-head thead th:first-child { z-index: 3; }
+  tr.rate-row th { top: 27px; font-weight: 400; }
+
+  td.wrong-cell { background: rgba(208,59,59,0.16); color: #b23030; font-weight: 600; }
+  td.correct-cell { color: var(--muted); }
+
+  .chip {
+    display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    color: var(--chip-color); background: color-mix(in srgb, var(--chip-color) 16%, transparent);
+  }
+
+  td.heat { position: relative; min-width: 90px; }
+  .heat-fill {
+    position: absolute; inset: 3px 6px; border-radius: 4px;
+    background: color-mix(in srgb, var(--heat-color) 22%, transparent);
+    width: var(--heat-w); transition: width 0.4s ease;
+  }
+  .heat-label { position: relative; z-index: 1; }
+
+  .opt-bars { display: flex; flex-direction: column; gap: 2px; min-width: 260px; }
+  .opt-row { display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
+  .opt-label { width: 34px; color: var(--muted); }
+  .opt-label.opt-correct { color: var(--series-1); font-weight: 700; }
+  .opt-track { flex: 1; background: var(--grid); border-radius: 3px; height: 8px; overflow: hidden; }
+  .opt-bar, .opt-bar-correct { height: 100%; width: var(--w); border-radius: 3px; }
+  .opt-bar { background: var(--muted); }
+  .opt-bar-correct { background: var(--series-1); }
+  .opt-count { width: 78px; text-align: right; color: var(--text-secondary); }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+  .card h3 { margin-bottom: 6px; color: var(--text-primary); font-size: 13.5px; }
+  .card ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.7; }
+
+  .two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; }
+  .bar-list { display: flex; flex-direction: column; gap: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .bar-label { width: 48px; color: var(--text-secondary); }
+  .bar-track { flex: 1; background: var(--grid); border-radius: 4px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; width: var(--w); background: var(--series-2); border-radius: 4px; }
+  .bar-count { width: 44px; text-align: right; color: var(--text-secondary); }
+  .two-col ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; }
+
+  .placeholder {
+    background: var(--plane); border: 1px dashed var(--border); border-radius: 8px;
+    padding: 14px 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.7;
+  }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="report-header animate" style="--delay:0">
+  <h1>📈 考後數據分析報告</h1>
+  <p class="sub">會考樣張（2 題計算題）　｜　批次：第6次學生作答卷（掃描）_20260812_133008　｜　產生時間：2026-09-21 09:43</p>
+</header>
+
+
+<section class="animate" style="--delay:1">
+  <div class="tiles">
+      <div class="tile">
+        <div class="tile-value">27 人</div>
+        <div class="tile-label">應考人數</div>
+        
+      </div>
+      <div class="tile">
+        <div class="tile-value">100 分</div>
+        <div class="tile-label">總分滿分</div>
+        <div class="tile-note">計算題12＋選擇題88</div>
+      </div>
+      <div class="tile">
+        <div class="tile-value">66.4</div>
+        <div class="tile-label">平均分</div>
+        
+      </div>
+      <div class="tile">
+        <div class="tile-value">69</div>
+        <div class="tile-label">中位數</div>
+        
+      </div>
+      <div class="tile">
+        <div class="tile-value">24.5</div>
+        <div class="tile-label">標準差</div>
+        
+      </div>
+      <div class="tile">
+        <div class="tile-value">100 / 13</div>
+        <div class="tile-label">最高分／最低分</div>
+        
+      </div>
+      <div class="tile">
+        <div class="tile-value">63.0%</div>
+        <div class="tile-label">及格率</div>
+        <div class="tile-note">以總分60%＝60.0分為門檻，僅供參考</div>
+      </div>
+      <div class="tile">
+        <div class="tile-value">39.2%</div>
+        <div class="tile-label">計算題平均得分率</div>
+        
+      </div>
+      <div class="tile">
+        <div class="tile-value">70.2%</div>
+        <div class="tile-label">選擇題平均得分率</div>
+        <div class="tile-note">平均錯題比例 29.6%</div>
+      </div></div>
+</section>
+
+
+<section class="animate" style="--delay:2">
+  <h2>① 各科答對題數與等級對照表</h2>
+  <p class="note">標示（A++~C）依本班選擇題答對題數排名，套用會考樣張慣用的等第人數比例（精熟／基礎／待加強）計算，並非會考官方全國常模（沒有全國考生資料可比對），只供班級內部參考。</p>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>等級</th><th>標示</th><th>答對題數範圍</th><th>人數</th><th>人數百分比</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td>
+          <td class="num">A++</td>
+          <td class="num">—</td>
+          <td class="num">0 人</td>
+          <td class="num">0.0%</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td>
+          <td class="num">A+</td>
+          <td class="num">20~20</td>
+          <td class="num">2 人</td>
+          <td class="num">7.4%</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td>
+          <td class="num">A</td>
+          <td class="num">19~19</td>
+          <td class="num">3 人</td>
+          <td class="num">11.1%</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td>
+          <td class="num">B++</td>
+          <td class="num">18~18</td>
+          <td class="num">4 人</td>
+          <td class="num">14.8%</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td>
+          <td class="num">B+</td>
+          <td class="num">16~17</td>
+          <td class="num">4 人</td>
+          <td class="num">14.8%</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td>
+          <td class="num">B</td>
+          <td class="num">13~15</td>
+          <td class="num">6 人</td>
+          <td class="num">22.2%</td>
+        </tr>
+        <tr>
+          <td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td>
+          <td class="num">C</td>
+          <td class="num">3~11</td>
+          <td class="num">8 人</td>
+          <td class="num">29.6%</td>
+        </tr></tbody>
+    </table>
+  </div>
+</section>
+
+
+<section class="animate" style="--delay:3">
+  <h2>② 學生成績總表</h2>
+  <p class="note">依座號排序；本系統單科批改，「學生成績總表」與「非選得分統計表」欄位重疊，合併為一張表。
+  「換算百分制」＝總分÷總分滿分×100，僅供比較，不是官方會考加權公式。</p>
+  <div class="table-wrap scroll-x">
+    <table class="data-table sticky-head">
+      <thead><tr><th>座號</th><th>選擇題答對題數</th><th>選擇題得分</th><th>Q1得分</th><th>Q2得分</th><th>非選總分</th><th>總分</th><th>換算百分制</th><th>排名</th><th>等級</th><th>標示</th><th>最弱題目／扣分原因</th></tr></thead>
+      <tbody><tr><td class="num">001</td><td class="num">18/20</td><td class="num">80</td><td class="num">4/6</td><td class="num">0/6</td><td class="num">4</td><td class="num strong">84</td><td class="num">84.0</td><td class="num">9</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B++</td><td class="wrap">Q2：未作答</td></tr><tr><td class="num">002</td><td class="num">11/20</td><td class="num">48</td><td class="num">0/6</td><td class="num">2/6</td><td class="num">2</td><td class="num strong">50</td><td class="num">50.0</td><td class="num">21</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">003</td><td class="num">18/20</td><td class="num">79</td><td class="num">2/6</td><td class="num">6/6</td><td class="num">8</td><td class="num strong">87</td><td class="num">87.0</td><td class="num">7</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B++</td><td class="wrap">Q1：單位未換算為公升、第(2)題未作答</td></tr><tr><td class="num">004</td><td class="num">19/20</td><td class="num">84</td><td class="num">3/6</td><td class="num">6/6</td><td class="num">9</td><td class="num strong">93</td><td class="num">93.0</td><td class="num">4</td><td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td><td class="num">A</td><td class="wrap">Q1：第(1)題起司與雞蛋重量代反</td></tr><tr><td class="num">005</td><td class="num">14/20</td><td class="num">62</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">62</td><td class="num">62.0</td><td class="num">17</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B</td><td class="wrap">Q1：兩題皆未乘食材重量</td></tr><tr><td class="num">006</td><td class="num">16/20</td><td class="num">70</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">70</td><td class="num">70.0</td><td class="num">13</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B+</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">007</td><td class="num">19/20</td><td class="num">84</td><td class="num">4/6</td><td class="num">6/6</td><td class="num">10</td><td class="num strong">94</td><td class="num">94.0</td><td class="num">3</td><td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td><td class="num">A</td><td class="wrap">Q1：未換算單位為公升、第(1)題加法算錯</td></tr><tr><td class="num">008</td><td class="num">18/20</td><td class="num">79</td><td class="num">2/6</td><td class="num">6/6</td><td class="num">8</td><td class="num strong">87</td><td class="num">87.0</td><td class="num">7</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B++</td><td class="wrap">Q1：總虛擬水計算錯誤、未換算單位，第(2)題算式及答案錯誤</td></tr><tr><td class="num">009</td><td class="num">8/20</td><td class="num">34</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">34</td><td class="num">34.0</td><td class="num">24</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">010</td><td class="num">6/20</td><td class="num">25</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">25</td><td class="num">25.0</td><td class="num">25</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">011</td><td class="num">19/20</td><td class="num">83</td><td class="num">0/6</td><td class="num">6/6</td><td class="num">6</td><td class="num strong">89</td><td class="num">89.0</td><td class="num">5</td><td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td><td class="num">A</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">012</td><td class="num">20/20</td><td class="num">88</td><td class="num">6/6</td><td class="num">6/6</td><td class="num">12</td><td class="num strong">100</td><td class="num">100.0</td><td class="num">1</td><td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td><td class="num">A+</td><td class="wrap">表現穩定</td></tr><tr><td class="num">013</td><td class="num">13/20</td><td class="num">57</td><td class="num">4/6</td><td class="num">6/6</td><td class="num">10</td><td class="num strong">67</td><td class="num">67.0</td><td class="num">15</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B</td><td class="wrap">Q1：1kg誤記為100g</td></tr><tr><td class="num">014</td><td class="num">20/20</td><td class="num">88</td><td class="num">6/6</td><td class="num">6/6</td><td class="num">12</td><td class="num strong">100</td><td class="num">100.0</td><td class="num">1</td><td><span class="chip chip-good" style="--chip-color:#0ca30c">精熟</span></td><td class="num">A+</td><td class="wrap">表現穩定</td></tr><tr><td class="num">015</td><td class="num">13/20</td><td class="num">57</td><td class="num">4/6</td><td class="num">3/6</td><td class="num">7</td><td class="num strong">64</td><td class="num">64.0</td><td class="num">16</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B</td><td class="wrap">Q2：65%推導過程省略</td></tr><tr><td class="num">016</td><td class="num">16/20</td><td class="num">71</td><td class="num">6/6</td><td class="num">6/6</td><td class="num">12</td><td class="num strong">83</td><td class="num">83.0</td><td class="num">10</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B+</td><td class="wrap">表現穩定</td></tr><tr><td class="num">017</td><td class="num">17/20</td><td class="num">75</td><td class="num">0/6</td><td class="num">3/6</td><td class="num">3</td><td class="num strong">78</td><td class="num">78.0</td><td class="num">11</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B+</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">018</td><td class="num">16/20</td><td class="num">71</td><td class="num">4/6</td><td class="num">3/6</td><td class="num">7</td><td class="num strong">78</td><td class="num">78.0</td><td class="num">11</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B+</td><td class="wrap">Q2：和差求人數算式邏輯錯誤</td></tr><tr><td class="num">019</td><td class="num">13/20</td><td class="num">57</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">57</td><td class="num">57.0</td><td class="num">18</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">020</td><td class="num">18/20</td><td class="num">79</td><td class="num">4/6</td><td class="num">6/6</td><td class="num">10</td><td class="num strong">89</td><td class="num">89.0</td><td class="num">5</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B++</td><td class="wrap">Q1：(1)加總算錯；(2)單位換算錯</td></tr><tr><td class="num">021</td><td class="num">3/20</td><td class="num">13</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">13</td><td class="num">13.0</td><td class="num">27</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">022</td><td class="num">10/20</td><td class="num">43</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">43</td><td class="num">43.0</td><td class="num">23</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">023</td><td class="num">15/20</td><td class="num">67</td><td class="num">0/6</td><td class="num">2/6</td><td class="num">2</td><td class="num strong">69</td><td class="num">69.0</td><td class="num">14</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">024</td><td class="num">13/20</td><td class="num">57</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">57</td><td class="num">57.0</td><td class="num">18</td><td><span class="chip chip-warning" style="--chip-color:#fab219">基礎</span></td><td class="num">B</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">025</td><td class="num">11/20</td><td class="num">47</td><td class="num">3/6</td><td class="num">2/6</td><td class="num">5</td><td class="num strong">52</td><td class="num">52.0</td><td class="num">20</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q2：第(2)小題未作答</td></tr><tr><td class="num">026</td><td class="num">11/20</td><td class="num">47</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">47</td><td class="num">47.0</td><td class="num">22</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr><tr><td class="num">027</td><td class="num">5/20</td><td class="num">22</td><td class="num">0/6</td><td class="num">0/6</td><td class="num">0</td><td class="num strong">22</td><td class="num">22.0</td><td class="num">26</td><td><span class="chip chip-critical" style="--chip-color:#d03b3b">待加強</span></td><td class="num">C</td><td class="wrap">Q1：未作答</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+
+<section class="animate" style="--delay:4">
+  <h2>③ 學生答題狀況比較分析</h2>
+  <p class="note">灰色「-」代表答對；紅色底代表答錯並顯示實際塗黑的選項（「空白」＝未作答，「多選」＝塗黑兩個以上選項）。</p>
+  <div class="table-wrap scroll-x">
+    <table class="data-table sticky-head sticky-col">
+      <thead>
+        <tr><th>座號</th><th>第1題</th><th>第2題</th><th>第3題</th><th>第4題</th><th>第5題</th><th>第6題</th><th>第7題</th><th>第8題</th><th>第9題</th><th>第10題</th><th>第11題</th><th>第12題</th><th>第13題</th><th>第14題</th><th>第15題</th><th>第16題</th><th>第17題</th><th>第18題</th><th>第19題</th><th>第20題</th></tr>
+        <tr class="rate-row"><th class="num muted-head">本班答對率</th><th class="num muted-head">81%</th><th class="num muted-head">89%</th><th class="num muted-head">56%</th><th class="num muted-head">70%</th><th class="num muted-head">33%</th><th class="num muted-head">63%</th><th class="num muted-head">78%</th><th class="num muted-head">56%</th><th class="num muted-head">78%</th><th class="num muted-head">89%</th><th class="num muted-head">93%</th><th class="num muted-head">78%</th><th class="num muted-head">52%</th><th class="num muted-head">59%</th><th class="num muted-head">67%</th><th class="num muted-head">70%</th><th class="num muted-head">78%</th><th class="num muted-head">74%</th><th class="num muted-head">63%</th><th class="num muted-head">81%</th></tr>
+      </thead>
+      <tbody><tr><td class="num">001</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">002</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">C</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td></tr><tr><td class="num">003</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">004</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">005</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">006</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">007</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">008</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">009</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">D</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num wrong-cell">C</td><td class="num wrong-cell">D</td></tr><tr><td class="num">010</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">D</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num wrong-cell">D</td><td class="num wrong-cell">C</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td></tr><tr><td class="num">011</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">012</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">013</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">014</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">015</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td></tr><tr><td class="num">016</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">017</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">018</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">019</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">B</td></tr><tr><td class="num">020</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td></tr><tr><td class="num">021</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">C</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">D</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td><td class="num correct-cell">-</td><td class="num wrong-cell">空白</td><td class="num wrong-cell">空白</td></tr><tr><td class="num">022</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">D</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td></tr><tr><td class="num">023</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">024</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td></tr><tr><td class="num">025</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num wrong-cell">空白</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">A</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td></tr><tr><td class="num">026</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num wrong-cell">D</td><td class="num wrong-cell">B</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td><td class="num wrong-cell">C</td><td class="num wrong-cell">A</td><td class="num correct-cell">-</td></tr><tr><td class="num">027</td><td class="num wrong-cell">C</td><td class="num correct-cell">-</td><td class="num correct-cell">-</td><td class="num wrong-cell">B</td><td class="num wrong-cell">A</td><td class="num wrong-cell">C</td><td class="num wrong-cell">D</td><td class="num wrong-cell">C</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">A</td><td class="num wrong-cell">B</td><td class="num wrong-cell">C</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num wrong-cell">A</td><td class="num wrong-cell">B</td><td class="num correct-cell">-</td><td class="num wrong-cell">C</td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+
+<section class="animate" style="--delay:5">
+  <h2>⑤ 試題選項分析</h2>
+  <p class="note">各選項的作答人數／選答率；標準答案以 ✓ 標示；答對率依 80/60/40% 分級上色（藍高、紅低），
+  快速掃出誘答選項特別集中或整題普遍答錯的題目。</p>
+  <div class="table-wrap scroll-x">
+    <table class="data-table sticky-head">
+      <thead><tr><th>題號</th><th>對應知識</th><th>標準答案</th><th>各選項作答分布</th><th>本班答對率</th><th>精熟答對率</th><th>基礎答對率</th><th>待加強答對率</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="num">1</td>
+          <td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td>
+          <td class="num strong">D</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:14.8%"></div></div>
+            <span class="opt-count">4人・15%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">D ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:81.5%"></div></div>
+            <span class="opt-count">22人・81%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:81.5%"></span><span class="heat-label">81.5%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:92.9%"></span><span class="heat-label">92.9%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:50.0%"></span><span class="heat-label">50.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">2</td>
+          <td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td>
+          <td class="num strong">C</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:11.1%"></div></div>
+            <span class="opt-count">3人・11%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">C ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:88.9%"></div></div>
+            <span class="opt-count">24人・89%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:88.9%"></span><span class="heat-label">88.9%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:85.7%"></span><span class="heat-label">85.7%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:87.5%"></span><span class="heat-label">87.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">3</td>
+          <td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td>
+          <td class="num strong">C</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:18.5%"></div></div>
+            <span class="opt-count">5人・19%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">C ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:55.6%"></div></div>
+            <span class="opt-count">15人・56%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:22.2%"></div></div>
+            <span class="opt-count">6人・22%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:55.6%"></span><span class="heat-label">55.6%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:57.1%"></span><span class="heat-label">57.1%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:25.0%"></span><span class="heat-label">25.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">4</td>
+          <td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td>
+          <td class="num strong">C</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:11.1%"></div></div>
+            <span class="opt-count">3人・11%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">C ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:70.4%"></div></div>
+            <span class="opt-count">19人・70%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:18.5%"></div></div>
+            <span class="opt-count">5人・19%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:70.4%"></span><span class="heat-label">70.4%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:80.0%"></span><span class="heat-label">80.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:85.7%"></span><span class="heat-label">85.7%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:37.5%"></span><span class="heat-label">37.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">5</td>
+          <td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td>
+          <td class="num strong">D</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:37.0%"></div></div>
+            <span class="opt-count">10人・37%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:22.2%"></div></div>
+            <span class="opt-count">6人・22%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">D ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:33.3%"></div></div>
+            <span class="opt-count">9人・33%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:33.3%"></span><span class="heat-label">33.3%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:28.6%"></span><span class="heat-label">28.6%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:0.0%"></span><span class="heat-label">0.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">6</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">A</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label opt-correct">A ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:63.0%"></div></div>
+            <span class="opt-count">17人・63%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:33.3%"></div></div>
+            <span class="opt-count">9人・33%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:63.0%"></span><span class="heat-label">63.0%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:80.0%"></span><span class="heat-label">80.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:64.3%"></span><span class="heat-label">64.3%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:50.0%"></span><span class="heat-label">50.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">7</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">A</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label opt-correct">A ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:77.8%"></div></div>
+            <span class="opt-count">21人・78%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:77.8%"></span><span class="heat-label">77.8%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:25.0%"></span><span class="heat-label">25.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">8</td>
+          <td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td>
+          <td class="num strong">A</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label opt-correct">A ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:55.6%"></div></div>
+            <span class="opt-count">15人・56%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:11.1%"></div></div>
+            <span class="opt-count">3人・11%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:29.6%"></div></div>
+            <span class="opt-count">8人・30%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:55.6%"></span><span class="heat-label">55.6%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:50.0%"></span><span class="heat-label">50.0%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:37.5%"></span><span class="heat-label">37.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">9</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">A</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label opt-correct">A ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:77.8%"></div></div>
+            <span class="opt-count">21人・78%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:18.5%"></div></div>
+            <span class="opt-count">5人・19%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:77.8%"></span><span class="heat-label">77.8%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:85.7%"></span><span class="heat-label">85.7%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:50.0%"></span><span class="heat-label">50.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">10</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">C</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">C ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:88.9%"></div></div>
+            <span class="opt-count">24人・89%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:88.9%"></span><span class="heat-label">88.9%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:92.9%"></span><span class="heat-label">92.9%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:75.0%"></span><span class="heat-label">75.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">11</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">B</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">B ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:92.6%"></div></div>
+            <span class="opt-count">25人・93%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:92.6%"></span><span class="heat-label">92.6%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:75.0%"></span><span class="heat-label">75.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">12</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">D</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:11.1%"></div></div>
+            <span class="opt-count">3人・11%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">D ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:77.8%"></div></div>
+            <span class="opt-count">21人・78%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:77.8%"></span><span class="heat-label">77.8%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:78.6%"></span><span class="heat-label">78.6%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:62.5%"></span><span class="heat-label">62.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">13</td>
+          <td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td>
+          <td class="num strong">C</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:37.0%"></div></div>
+            <span class="opt-count">10人・37%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">C ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:51.8%"></div></div>
+            <span class="opt-count">14人・52%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:51.8%"></span><span class="heat-label">51.8%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:80.0%"></span><span class="heat-label">80.0%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:57.1%"></span><span class="heat-label">57.1%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:25.0%"></span><span class="heat-label">25.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">14</td>
+          <td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td>
+          <td class="num strong">A</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label opt-correct">A ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:59.3%"></div></div>
+            <span class="opt-count">16人・59%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:14.8%"></div></div>
+            <span class="opt-count">4人・15%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:22.2%"></div></div>
+            <span class="opt-count">6人・22%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:59.3%"></span><span class="heat-label">59.3%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:64.3%"></span><span class="heat-label">64.3%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:25.0%"></span><span class="heat-label">25.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">15</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">D</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:25.9%"></div></div>
+            <span class="opt-count">7人・26%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">D ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:66.7%"></div></div>
+            <span class="opt-count">18人・67%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:66.7%"></span><span class="heat-label">66.7%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:78.6%"></span><span class="heat-label">78.6%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:25.0%"></span><span class="heat-label">25.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">16</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">D</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:11.1%"></div></div>
+            <span class="opt-count">3人・11%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:11.1%"></div></div>
+            <span class="opt-count">3人・11%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">D ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:70.4%"></div></div>
+            <span class="opt-count">19人・70%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:70.4%"></span><span class="heat-label">70.4%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:78.6%"></span><span class="heat-label">78.6%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:37.5%"></span><span class="heat-label">37.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">17</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">B</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">B ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:77.8%"></div></div>
+            <span class="opt-count">21人・78%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:77.8%"></span><span class="heat-label">77.8%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:92.9%"></span><span class="heat-label">92.9%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:37.5%"></span><span class="heat-label">37.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">18</td>
+          <td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td>
+          <td class="num strong">D</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:14.8%"></div></div>
+            <span class="opt-count">4人・15%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">D ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:74.1%"></div></div>
+            <span class="opt-count">20人・74%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:74.1%"></span><span class="heat-label">74.1%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:92.9%"></span><span class="heat-label">92.9%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:25.0%"></span><span class="heat-label">25.0%</span></td>
+        </tr>
+        <tr>
+          <td class="num">19</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">B</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label">A</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:22.2%"></div></div>
+            <span class="opt-count">6人・22%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label opt-correct">B ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:63.0%"></div></div>
+            <span class="opt-count">17人・63%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:63.0%"></span><span class="heat-label">63.0%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#fab219"><span class="heat-fill" style="--heat-w:78.6%"></span><span class="heat-label">78.6%</span></td><td class="num heat" style="--heat-color:#d03b3b"><span class="heat-fill" style="--heat-w:12.5%"></span><span class="heat-label">12.5%</span></td>
+        </tr>
+        <tr>
+          <td class="num">20</td>
+          <td>平均數、中位數與眾數的計算與意義</td>
+          <td class="num strong">A</td>
+          <td><div class="opt-bars">
+          <div class="opt-row">
+            <span class="opt-label opt-correct">A ✓</span>
+            <div class="opt-track"><div class="opt-bar-correct" style="--w:81.5%"></div></div>
+            <span class="opt-count">22人・81%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">B</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">C</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:7.4%"></div></div>
+            <span class="opt-count">2人・7%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">D</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">空白</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:3.7%"></div></div>
+            <span class="opt-count">1人・4%</span>
+          </div>
+          <div class="opt-row">
+            <span class="opt-label">多選</span>
+            <div class="opt-track"><div class="opt-bar" style="--w:0.0%"></div></div>
+            <span class="opt-count">0人・0%</span>
+          </div></div></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:81.5%"></span><span class="heat-label">81.5%</span></td>
+          <td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:100.0%"></span><span class="heat-label">100.0%</span></td><td class="num heat" style="--heat-color:#0ca30c"><span class="heat-fill" style="--heat-w:92.9%"></span><span class="heat-label">92.9%</span></td><td class="num heat" style="--heat-color:#ec835a"><span class="heat-fill" style="--heat-w:50.0%"></span><span class="heat-label">50.0%</span></td>
+        </tr></tbody>
+    </table>
+  </div>
+</section>
+
+
+<section class="animate" style="--delay:6">
+  <h2>常見扣分原因統計</h2>
+  <p class="note">各計算題最常出現的扣分原因，依出現次數排序，僅列前 5 項。</p>
+  <div class="card-grid"><div class="card"><h3>Q1</h3><ul><li>未作答　<span class="muted">（13 人）</span></li><li>未換算為公升　<span class="muted">（1 人）</span></li><li>單位未換算為公升、第(2)題未作答　<span class="muted">（1 人）</span></li><li>第(1)題起司與雞蛋重量代反　<span class="muted">（1 人）</span></li><li>兩題皆未乘食材重量　<span class="muted">（1 人）</span></li></ul></div><div class="card"><h3>Q2</h3><ul><li>未作答　<span class="muted">（9 人）</span></li><li>第(2)小題總人數未算出且答案錯誤　<span class="muted">（1 人）</span></li><li>(1)讀圖算錯、(2)未用「多6人」列式求人數　<span class="muted">（1 人）</span></li><li>65%推導過程省略　<span class="muted">（1 人）</span></li><li>第(2)題假設方向設反　<span class="muted">（1 人）</span></li></ul></div></div>
+</section>
+
+
+<section class="animate" style="--delay:7">
+  <h2>選擇題錯題排行與關聯</h2>
+  <div class="two-col">
+    <div>
+      <h3>最多人答錯的題目（前10）</h3>
+      <div class="bar-list"><div class="bar-row">
+              <span class="bar-label">第5題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:66.7%"></div></div>
+              <span class="bar-count">18 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第13題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:48.1%"></div></div>
+              <span class="bar-count">13 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第8題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:44.4%"></div></div>
+              <span class="bar-count">12 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第3題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:44.4%"></div></div>
+              <span class="bar-count">12 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第14題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:40.7%"></div></div>
+              <span class="bar-count">11 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第6題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:37.0%"></div></div>
+              <span class="bar-count">10 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第19題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:37.0%"></div></div>
+              <span class="bar-count">10 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第15題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:33.3%"></div></div>
+              <span class="bar-count">9 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第4題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:29.6%"></div></div>
+              <span class="bar-count">8 人</span>
+            </div><div class="bar-row">
+              <span class="bar-label">第16題</span>
+              <div class="bar-track"><div class="bar-fill" style="--w:29.6%"></div></div>
+              <span class="bar-count">8 人</span>
+            </div></div>
+    </div>
+    <div>
+      <h3>最常一起答錯的題目配對（前10，須至少2人）</h3>
+      <ul><li>第5題 × 第13題　<span class='muted'>（12 人同時答錯）</span></li><li>第5題 × 第8題　<span class='muted'>（11 人同時答錯）</span></li><li>第5題 × 第14題　<span class='muted'>（10 人同時答錯）</span></li><li>第3題 × 第5題　<span class='muted'>（10 人同時答錯）</span></li><li>第5題 × 第19題　<span class='muted'>（9 人同時答錯）</span></li><li>第3題 × 第8題　<span class='muted'>（9 人同時答錯）</span></li><li>第8題 × 第13題　<span class='muted'>（8 人同時答錯）</span></li><li>第5題 × 第15題　<span class='muted'>（8 人同時答錯）</span></li><li>第3題 × 第13題　<span class='muted'>（8 人同時答錯）</span></li><li>第3題 × 第19題　<span class='muted'>（8 人同時答錯）</span></li></ul>
+    </div>
+  </div>
+</section>
+
+
+<section class="animate" style="--delay:8">
+  <h2>錯誤知識點統計與複習建議</h2>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>題型</th><th>題號</th><th>知識點</th><th>錯誤人數</th></tr></thead>
+      <tbody><tr><td>選擇題</td><td class='num'>1</td><td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td><td class='num'>5 人</td></tr><tr><td>選擇題</td><td class='num'>2</td><td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td><td class='num'>3 人</td></tr><tr><td>選擇題</td><td class='num'>3</td><td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td><td class='num'>12 人</td></tr><tr><td>選擇題</td><td class='num'>4</td><td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td><td class='num'>8 人</td></tr><tr><td>選擇題</td><td class='num'>5</td><td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td><td class='num'>18 人</td></tr><tr><td>選擇題</td><td class='num'>6</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>10 人</td></tr><tr><td>選擇題</td><td class='num'>7</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>6 人</td></tr><tr><td>選擇題</td><td class='num'>8</td><td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td><td class='num'>12 人</td></tr><tr><td>選擇題</td><td class='num'>9</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>6 人</td></tr><tr><td>選擇題</td><td class='num'>10</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>3 人</td></tr><tr><td>選擇題</td><td class='num'>11</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>2 人</td></tr><tr><td>選擇題</td><td class='num'>12</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>6 人</td></tr><tr><td>選擇題</td><td class='num'>13</td><td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td><td class='num'>13 人</td></tr><tr><td>選擇題</td><td class='num'>14</td><td>直方圖、長條圖、折線圖、圓形圖的繪製與報讀</td><td class='num'>11 人</td></tr><tr><td>選擇題</td><td class='num'>15</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>9 人</td></tr><tr><td>選擇題</td><td class='num'>16</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>8 人</td></tr><tr><td>選擇題</td><td class='num'>17</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>6 人</td></tr><tr><td>選擇題</td><td class='num'>18</td><td>相對次數、累積次數、累積相對次數分配折線圖的繪製與判讀</td><td class='num'>7 人</td></tr><tr><td>選擇題</td><td class='num'>19</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>10 人</td></tr><tr><td>選擇題</td><td class='num'>20</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>5 人</td></tr><tr><td>計算題</td><td class='num'>Q1(1)</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>3 人</td></tr><tr><td>計算題</td><td class='num'>Q1(2)</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>4 人</td></tr><tr><td>計算題</td><td class='num'>Q2(1)</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>2 人</td></tr><tr><td>計算題</td><td class='num'>Q2(2)</td><td>平均數、中位數與眾數的計算與意義</td><td class='num'>6 人</td></tr></tbody>
+    </table>
+  </div>
+  <p class="note">知識點對照表由 AI 比對「考後分析報告」頁面的題目概念與課綱知識點資料庫產生，可人工修正後重新產生報告。　另有：29 次計算題扣分因扣分原因文字未指明小題，無法定位知識點，未列入統計。</p>
+</section>
+
+</body>
+</html>
