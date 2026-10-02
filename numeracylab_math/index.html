@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="萬數屋">
+<meta name="theme-color" content="#bbe1f4">
+<title>萬數屋 導覽影片</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="favicon.png">
+<style>
+  /* ===========================================================
+     萬數屋 導覽影片介面
+     - 封面 → 按鈕頁 → 全螢幕影片
+     - 影片來源：YouTube（建議「不公開 unlisted」）
+     設定影片：把下方 <script> 裡每個展件的 YouTube 影片 ID 填進去即可。
+     =========================================================== */
+  :root{
+    --brand:#2660a6;          /* 品牌深藍 */
+    --sky:#b0daf0;            /* 天空藍 */
+    --sky-2:#cceafa;
+    --z1:#265FA4;             /* 第一區 感知迷途 深藍 */
+    --z2:#01A9CE;             /* 第二區 秩序乍現 青 */
+    --z3:#E285A2;             /* 第三區 規律成形 粉 */
+    --z4:#96C14B;             /* 第四區 以律解謎 綠 */
+    --ink:#2660a6;
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;overflow:hidden;}
+  body{
+    background:linear-gradient(180deg,var(--sky-2) 0%,var(--sky) 100%);
+    color:var(--ink);user-select:none;-webkit-user-select:none;
+  }
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;
+    transition:opacity .4s ease;}
+  .hidden{opacity:0;pointer-events:none;}
+
+  /* ---------- 封面（會動的場景） ---------- */
+  #cover{overflow:hidden;
+    background:linear-gradient(180deg,#d6effb 0%,#bbe1f4 58%,#a9d6ee 100%);}
+  #cover.enter{animation:coverFade .6s ease-in forwards;}
+  @keyframes coverFade{to{transform:scale(1.12);opacity:0;}}
+  .sky{position:absolute;inset:0;}
+  .cover-el{position:absolute;will-change:transform;}
+  /* 標題、logo：上排一左一右，上緣對齊 7%、左右邊界對稱 5% */
+  .title{left:5%;top:7%;width:min(40%,660px);}
+  .co-logo{right:5%;top:7%;height:8.5%;}
+
+  /* 雲：緩慢向右飄 */
+  .cloud{height:auto;left:-30%;}
+  .c1{width:16%;top:52%;animation:drift 60s linear infinite;}
+  .c2{width:22%;top:74%;animation:drift 86s linear infinite;animation-delay:-34s;}
+  .c3{width:12%;top:19%;animation:drift 50s linear infinite;animation-delay:-20s;}
+  .c4{width:24%;top:63%;animation:drift 74s linear infinite;animation-delay:-52s;}
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(140vw)}}
+
+  /* 熱氣球：漂浮 */
+  .balloons{left:5%;top:40%;width:13%;height:auto;animation:floatB 7s ease-in-out infinite;}
+  @keyframes floatB{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-26px) rotate(1.5deg)}}
+
+  /* 蝴蝶：飛（無拖尾白線） */
+  .butterfly{left:44%;top:45%;width:5.5%;height:auto;animation:fly 13s ease-in-out infinite;}
+  @keyframes fly{
+    0%{transform:translate(0,0) rotate(-6deg)}
+    25%{transform:translate(70px,-46px) rotate(8deg)}
+    50%{transform:translate(150px,8px) rotate(-4deg)}
+    75%{transform:translate(80px,54px) rotate(7deg)}
+    100%{transform:translate(0,0) rotate(-6deg)}}
+
+  /* 正弦虛線：紙飛機角色的飛行軌跡，左端捲曲錨定在綿羊身上、往右延伸（超出畫面裁掉） */
+  .house-wrap .sine{position:absolute;left:82%;top:13.4%;width:185%;height:auto;z-index:0;pointer-events:none;}
+
+  /* 落葉 */
+  .leaf{position:absolute;top:-8%;width:clamp(10px,1.4vw,18px);height:clamp(13px,1.8vw,22px);
+    background:linear-gradient(135deg,#a9cf5c,#7fae37);border-radius:0 100% 0 100%;opacity:.85;
+    animation:fall linear infinite;}
+  .leaf.pink{background:linear-gradient(135deg,#f4b0c8,#e585a6);}   /* 粉紅 */
+  .leaf.lime{background:linear-gradient(135deg,#dce884,#bcd455);}   /* 黃綠 */
+  .leaf.behind{opacity:.6;}   /* 落在樹屋後方，稍淡做出深度 */
+  @keyframes fall{0%{transform:translate(0,-12vh) rotate(0)}
+    100%{transform:translate(70px,116vh) rotate(400deg)}}
+
+  /* 樹屋主體：放大、固定不動、樹幹底貼齊畫面下緣；內含門與 NumNum */
+  .house-wrap{right:12%;bottom:-6%;height:80%;aspect-ratio:294.2 / 391.22;perspective:1400px;}
+  .house-wrap .house{width:100%;height:100%;display:block;
+    filter:drop-shadow(0 14px 22px rgba(38,95,164,.16));}
+  /* 門：轉軸(灰色)在門板右緣，永遠釘在門框左柱(transform-origin:right)。
+     關門＝門板旋轉蓋住開口；開門＝攤回左邊(door.svg 原本的樣子)，轉軸始終連著門框 */
+  .house-wrap .door-pivot{position:absolute;left:6.9%;top:44%;width:16.6%;height:auto;z-index:2;}
+  .house-wrap .door-pivot .door{display:block;width:100%;height:auto;
+    transform-origin:right center;transform:translateX(-6%) rotateY(180deg);
+    transition:transform 1.1s ease;}
+  .house-wrap.opened .door-pivot .door{transform:rotateY(0deg);}
+  /* NumNum：預設站樓梯上；開門後移到門前（子元件，隨房子等比例縮放） */
+  /* NumNum 身高＝Numi 兩倍：width 28% 使綠色本體高≈房子 18%（Numi≈9%）*/
+  .house-wrap .numnum{position:absolute;left:1%;top:64%;width:28%;height:auto;z-index:3;
+    transition:left 1.2s ease .3s,top 1.2s ease .3s;}
+  .house-wrap.opened .numnum{left:16%;top:50%;}
+  /* 開始導覽：左下 */
+  /* 開始探險：水平置中對齊主標題中心（約 25%） */
+  .start-btn{position:absolute;left:32%;top:53%;transform:translate(-50%,-50%);z-index:5;
+    background:var(--brand);color:#fff;font-size:clamp(18px,2.8vw,28px);font-weight:800;
+    letter-spacing:.14em;padding:.75em 2.4em;border:none;border-radius:999px;cursor:pointer;
+    box-shadow:0 9px 0 #1c4a80,0 16px 26px rgba(28,74,128,.35);
+    animation:btnpulse 2.2s ease-in-out infinite;}
+  .start-btn:active{animation:none;transform:translate(-50%,-50%) translateY(6px);
+    box-shadow:0 3px 0 #1c4a80,0 8px 16px rgba(28,74,128,.35);}
+  @keyframes btnpulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.05)}}
+  /* 首頁版權文字：往右錯開左下角的喇叭 */
+  .copyright{position:absolute;left:32%;bottom:20px;transform:translateX(-50%);z-index:4;
+    font-size:clamp(11px,1.3vw,14px);color:rgba(38,96,164,.5);letter-spacing:.03em;
+    white-space:nowrap;pointer-events:none;}
+
+  /* ---------- 按鈕頁 ---------- */
+  #menu{padding:0;}
+  .topbar{flex:0 0 auto;background:var(--brand);display:flex;align-items:center;
+    justify-content:space-between;padding:clamp(10px,1.6vh,18px) clamp(20px,3.4vw,46px);
+    box-shadow:0 3px 10px rgba(38,95,164,.25);}
+  .topbar .logo{height:clamp(46px,8.5vh,84px);}   /* 與首頁 logo 同尺寸 */
+  .topbar .ttl{color:#fff;font-weight:800;font-size:clamp(17px,2.4vw,24px);letter-spacing:.08em;}
+  .topbar .ttl small{display:block;font-weight:600;font-size:.55em;letter-spacing:.18em;opacity:.85;}
+
+  /* 卡片與分區等比縮小，四周多留白 */
+  .zones{flex:1 1 auto;display:grid;grid-template-rows:repeat(4,1fr);
+    gap:clamp(10px,1.8vh,18px);padding:clamp(16px,3.6vh,42px) clamp(34px,7vw,110px);min-height:0;}
+  .zone{display:grid;grid-template-columns:clamp(104px,13vw,168px) 1fr 1fr;
+    gap:clamp(10px,1.8vw,20px);align-items:stretch;min-height:0;}
+  .zone-tag{border-radius:16px;color:#fff;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:.4em;
+    box-shadow:0 5px 0 rgba(0,0,0,.12) inset,0 6px 14px rgba(38,95,164,.15);}
+  .zone-tag .zn{font-size:clamp(13px,1.5vw,17px);font-weight:700;letter-spacing:.1em;opacity:.92;}
+  .zone-tag .zname{font-size:clamp(20px,2.6vw,30px);font-weight:900;letter-spacing:.14em;margin-top:.15em;}
+  .z1 .zone-tag{background:var(--z1)} .z2 .zone-tag{background:var(--z2)}
+  .z3 .zone-tag{background:var(--z3)} .z4 .zone-tag{background:var(--z4)}
+
+  /* 展件按鈕：白卡 + 錯位色塊(立體感) + 可壓下去 */
+  .item{position:relative;border:none;background:transparent;padding:0;cursor:pointer;
+    min-height:0;min-width:0;}
+  .item .card{position:relative;height:100%;width:100%;background:#fff;border-radius:18px;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    padding:clamp(4px,1vh,12px) clamp(8px,1.5vw,20px);
+    transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    z-index:1;}
+  .item .card img{max-height:100%;max-width:100%;object-fit:contain;pointer-events:none;}
+  /* 錯位色塊（立體感） */
+  .item::after{content:"";position:absolute;inset:11px -11px -11px 11px;border-radius:18px;z-index:0;}
+  .z1 .item::after{background:var(--z1)} .z2 .item::after{background:var(--z2)}
+  .z3 .item::after{background:var(--z3)} .z4 .item::after{background:var(--z4)}
+  .z1 .item .card{box-shadow:0 0 0 2px var(--z1) inset}
+  .z2 .item .card{box-shadow:0 0 0 2px var(--z2) inset}
+  .z3 .item .card{box-shadow:0 0 0 2px var(--z3) inset}
+  .z4 .item .card{box-shadow:0 0 0 2px var(--z4) inset}
+  /* 按下：白卡整個壓進色塊裡，變平 + 稍暗 */
+  .item:active .card,.item.pressed .card{transform:translate(11px,11px);filter:brightness(.94);}
+  .badge{position:absolute;top:10px;right:2px;z-index:2;display:flex;align-items:center;gap:.3em;
+    background:rgba(255,255,255,.9);border-radius:999px;padding:.15em .6em;font-size:clamp(11px,1.2vw,14px);
+    font-weight:700;color:var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.12);}
+  .badge svg{width:1em;height:1em;}
+  .item.coming .card{filter:grayscale(.15) opacity(.9);}
+  .item.coming .badge{color:#b0651b;background:#fff2df;}
+
+  /* ---------- 導覽介紹（故事） ---------- */
+  #story{z-index:30;color:#f4ecd8;cursor:pointer;overflow:hidden;
+    background:radial-gradient(130% 120% at 50% 22%,#1a4a7a 0%,#0e2d54 55%,#071a34 100%);}
+  .story-glyph{position:absolute;color:rgba(255,221,140,.09);font-weight:800;pointer-events:none;
+    animation:floatUp linear infinite;}
+  @keyframes floatUp{0%{transform:translateY(30px) rotate(0);opacity:0}
+    12%{opacity:1}88%{opacity:1}100%{transform:translateY(-60px) rotate(18deg);opacity:0}}
+  .story-stage{position:absolute;inset:0;}
+  .seg{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;padding:8% 9% 12%;
+    font-size:clamp(19px,2.9vw,33px);line-height:1.95;letter-spacing:.05em;font-weight:600;
+    line-break:strict;overflow-wrap:break-word;
+    opacity:0;transform:translateY(26px);pointer-events:none;
+    transition:opacity .8s ease,transform .8s ease;}
+  .seg.show{opacity:1;transform:none;pointer-events:auto;}
+  /* 第一句後停頓：剩餘文字延遲 2 秒才淡入（位置先保留不跳動） */
+  .seg .s2{opacity:0;transition:opacity .8s ease;}
+  .seg.show .s2{opacity:1;transition-delay:0.7s;}
+  .seg b{color:#ffd97a;font-weight:800;}
+  .seg .big{font-size:1.5em;display:inline-block;margin-top:.2em;letter-spacing:.12em;}
+  .seg .sub{display:block;font-size:.72em;line-height:1.8;opacity:.9;margin-top:1.1em;font-weight:500;}
+  .seg .lead{margin-bottom:.8em;}
+  .seg .lines span{display:block;margin:.35em 0;opacity:0;transform:translateY(14px);
+    transition:opacity .6s ease,transform .6s ease;}
+  .seg.show .lines span{opacity:1;transform:none;}
+  .seg.show .lines span:nth-child(1){transition-delay:.4s}
+  .seg.show .lines span:nth-child(2){transition-delay:1.1s}
+  .seg.show .lines span:nth-child(3){transition-delay:1.8s}
+  .seg.show .lines span:nth-child(4){transition-delay:2.5s}
+  .seg .final-q{margin-top:.8em;font-size:1.15em;font-weight:800;color:#ffe9a8;}
+  .story-skip{position:absolute;top:4%;right:4%;z-index:5;background:rgba(255,255,255,.14);
+    color:#fff;border:1.5px solid rgba(255,255,255,.4);border-radius:999px;padding:.5em 1.2em;
+    font-weight:700;font-size:clamp(12px,1.6vw,17px);cursor:pointer;}
+  .story-skip:active{background:rgba(255,255,255,.28);}
+  .story-hint{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);
+    color:rgba(255,255,255,.55);font-size:clamp(12px,1.5vw,16px);
+    animation:storyHintB 1.8s ease-in-out infinite;pointer-events:none;}
+  @keyframes storyHintB{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}
+  .story-dots{position:absolute;bottom:5%;left:50%;transform:translateX(-50%);display:flex;gap:.55em;}
+  .story-dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.28);transition:.3s;}
+  .story-dots i.on{background:#ffd97a;transform:scale(1.35);}
+
+  /* ---------- 影片播放 ---------- */
+  #player{background:#000;align-items:center;justify-content:center;z-index:50;}
+  #player .frame{position:relative;width:100%;height:100%;}
+  #player iframe,#player video{position:absolute;inset:0;width:100%;height:100%;border:0;}
+  #player .placeholder{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:.6em;color:#fff;background:#0b2340;
+    font-size:clamp(18px,3vw,28px);font-weight:700;text-align:center;padding:2em;}
+  .close-btn{position:absolute;top:max(14px,env(safe-area-inset-top));right:16px;z-index:60;
+    width:clamp(48px,6vw,60px);height:clamp(48px,6vw,60px);border-radius:50%;
+    background:rgba(255,255,255,.92);border:none;color:var(--brand);font-size:26px;font-weight:900;
+    cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;}
+  .close-btn:active{transform:scale(.92);}
+
+  /* 直式提醒 */
+  @media (orientation:portrait){
+    .rotate-hint{position:fixed;inset:0;background:var(--brand);color:#fff;z-index:80;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1em;
+      text-align:center;padding:2em;font-size:22px;font-weight:700;}
+    .rotate-hint svg{width:70px;height:70px;animation:rot 2.5s ease-in-out infinite;}
+  }
+  @media (orientation:landscape){ .rotate-hint{display:none;} }
+  @keyframes rot{0%,45%{transform:rotate(0)}55%,100%{transform:rotate(90deg)}}
+
+  /* 背景音樂開關鈕 */
+  .music-btn{position:fixed;left:16px;bottom:16px;z-index:70;
+    width:clamp(40px,5vh,50px);height:clamp(40px,5vh,50px);border-radius:50%;border:none;cursor:pointer;
+    background:rgba(255,255,255,.35);color:var(--brand);font-size:clamp(18px,2.4vh,22px);
+    box-shadow:0 3px 10px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:transform .12s ease;}
+  .music-btn:active{transform:scale(.9);}
+  .music-btn svg{width:75%;height:75%;display:block;opacity:.5;}   /* 放大 130% + 降低對比 */
+  /* 故事頁（深底）：喇叭改淺色、對比明顯些；首頁與選單頁不受影響 */
+  #story:not(.hidden) ~ .music-btn{background:rgba(255,255,255,.16);color:#f4ecd8;}
+  #story:not(.hidden) ~ .music-btn svg{opacity:.85;}
+</style>
+</head>
+<body>
+
+  <!-- 封面：會動的場景 -->
+  <section id="cover" class="screen">
+    <div class="sky">
+      <img class="cover-el cloud c3" src="SVG/cloud-3.svg" alt="">
+      <img class="cover-el cloud c4" src="SVG/cloud-4.svg" alt="">
+      <img class="cover-el cloud c1" src="SVG/cloud-1.svg" alt="">
+      <img class="cover-el cloud c2" src="SVG/cloud-2.svg" alt="">
+      <img class="cover-el balloons" src="SVG/balloons.svg" alt="">
+      <img class="cover-el butterfly" src="SVG/butterfly.svg" alt="">
+      <img class="cover-el title" src="SVG/title.svg" alt="歡迎光臨萬數屋">
+      <img class="cover-el co-logo" src="assets/logo_blue.png" alt="數感實驗室">
+      <!-- 落在樹屋「後方」的葉子（放在 house-wrap 之前） -->
+      <div class="leaf behind lime" style="left:74%;animation-duration:11s;animation-delay:-6s"></div>
+      <div class="leaf behind pink" style="left:84%;animation-duration:13s;animation-delay:-2s"></div>
+      <div class="cover-el house-wrap">
+        <img class="sine" src="SVG/line.svg" alt="">
+        <img class="house" src="SVG/house_body拷貝.svg" alt="萬數屋">
+        <div class="door-pivot"><img class="door" src="SVG/door.svg" alt=""></div>
+        <img class="numnum" src="SVG/numnum.svg" alt="NumNum">
+      </div>
+      <div class="leaf" style="left:68%;animation-duration:10s;animation-delay:-8s"></div>
+      <div class="leaf pink" style="left:11%;animation-duration:11s;animation-delay:-3s"></div>
+      <div class="leaf lime" style="left:21%;animation-duration:13s;animation-delay:-7s"></div>
+      <div class="leaf" style="left:32%;animation-duration:10s;animation-delay:-9s"></div>
+      <div class="leaf pink" style="left:41%;animation-duration:12.5s;animation-delay:-2s"></div>
+      <button class="start-btn" onclick="enterCover()">開始探險</button>
+      <div class="copyright">Copyright © 2026 數感實驗室. All rights reserved.</div>
+    </div>
+  </section>
+
+  <!-- 導覽介紹（故事，分段出現，可跳過） -->
+  <section id="story" class="screen hidden" onclick="storyTap(event)">
+    <span class="story-glyph" style="left:8%;top:20%;font-size:4vw;animation-duration:9s">π</span>
+    <span class="story-glyph" style="left:84%;top:30%;font-size:5vw;animation-duration:12s;animation-delay:-3s">∑</span>
+    <span class="story-glyph" style="left:15%;top:70%;font-size:3.4vw;animation-duration:10s;animation-delay:-5s">√</span>
+    <span class="story-glyph" style="left:78%;top:74%;font-size:4.4vw;animation-duration:11s;animation-delay:-2s">∞</span>
+    <span class="story-glyph" style="left:46%;top:12%;font-size:3vw;animation-duration:13s;animation-delay:-7s">φ</span>
+    <button class="story-skip" onclick="event.stopPropagation();skipStory()">跳過介紹 ⏭</button>
+    <div class="story-stage">
+      <div class="seg">古老神木群深處，<br>有一棟外表毫不起眼的木屋——<br><b class="big">萬數屋</b></div>
+      <div class="seg">數百年來，沒有人知道它的正確用途。<span class="s2"><br>直到有人發現樹幹深處，<br>竟隱藏著一座 <b>秘密研究室</b></span></div>
+      <div class="seg">裡面散落著前任研究員的筆記、<br>實驗道具與手寫圖稿，<br>記錄著人類與混亂世界對抗、<br>試圖理出秩序的痕跡。</div>
+      <div class="seg">
+        <div class="lead">研究員們在樹屋裡，<br>製作出各種奇妙的道具——</div>
+        <div class="lines">
+          <span>有些能 <b>拆解時間</b></span>
+          <span>有些能 <b>重組空間</b></span>
+          <span>有些能讓混亂之中的 <b>規律緩緩浮現</b></span>
+          <span>有些能讓 <b>看不見的東西顯形</b></span>
+        </div>
+      </div>
+      <div class="seg">他們不斷觀察、實驗、記錄，<br>試著理解這個世界究竟如何運作。</div>
+      <div class="seg">然而，萬數屋從未真正完工。<span class="s2"><br>據說，只有懷抱<b>探索心</b>的人，<br>才能找到通往樹屋的入口。</span></div>
+      <div class="seg">
+        大門，現在再次打開。<br>桌上仍殘留著上一任研究員的筆記，<br>與未完成的實驗。
+        <div class="final-q">以及，一個留給新研究員的問題……</div>
+      </div>
+    </div>
+    <div class="story-hint" id="storyHint">輕觸畫面繼續 ›</div>
+    <div class="story-dots" id="storyDots"></div>
+  </section>
+
+  <!-- 按鈕頁 -->
+  <section id="menu" class="screen hidden">
+    <div class="topbar">
+      <div class="ttl">萬數屋 · 導覽影片<small>WELCOME TO NUMERACYLAND</small></div>
+      <img class="logo" src="assets/logo_white.png" alt="數感實驗室 NUMERACY LAB" onclick="goHome()" style="cursor:pointer" title="回首頁">
+    </div>
+    <div class="zones" id="zones"></div>
+  </section>
+
+  <!-- 影片播放 -->
+  <section id="player" class="screen hidden">
+    <button class="close-btn" onclick="closePlayer()" aria-label="關閉">✕</button>
+    <div class="frame" id="frame"></div>
+  </section>
+
+  <!-- 直式提醒 -->
+  <div class="rotate-hint">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    請將平板轉為橫向使用
+  </div>
+
+  <!-- 背景音樂 -->
+  <audio id="bgm" loop preload="auto"></audio>
+  <button class="music-btn" id="musicBtn" onclick="toggleMusic()" aria-label="背景音樂開關"></button>
+
+<script>
+/* ===================================================================
+   影片設定：把每個展件的 YouTube 影片 ID 填進 id 欄位即可。
+   例如影片網址 https://youtu.be/AbC123xyz  →  id:"AbC123xyz"
+   （建議影片設為「不公開 unlisted」；頻道不要開營利就不會有廣告）
+   留空 "" 的展件會顯示「影片即將上線」（僅 youtube 模式；local 模式一律視為已就緒）。
+
+   VIDEO_MODE 切換本地/線上播放：
+   - "youtube"：嵌入上面填好的 YouTube 不公開影片（需要網路）。
+   - "local"  ：改播本機影片檔，路徑固定為 assets/videos/<key>.mp4
+                （例如 huanying_lun → assets/videos/huanying_lun.mp4）。
+                部署這個版本前，記得把 8 支影片檔放進 assets/videos/。
+   =================================================================== */
+const VIDEO_MODE = "youtube"; // "youtube" | "local"
+
+const ZONES = [
+  { zone:"z1", no:"第一區", name:"感知迷途", items:[
+      { key:"huanying_lun", title:"幻影輪",    id:"-4P8ktDYUZY" },
+      { key:"zhongxin",     title:"找到重心",  id:"Hv1UaXriuHE" },
+  ]},
+  { zone:"z2", no:"第二區", name:"秩序乍現", items:[
+      { key:"shabai",       title:"沙擺",      id:"lVPpIuBCajQ" },
+      { key:"tuoyuan",      title:"橢圓撞球檯", id:"hy8q_lZ64XU" },
+  ]},
+  { zone:"z3", no:"第三區", name:"規律成形", items:[
+      { key:"galton",       title:"高爾頓板",  id:"RZ3gz1C3Md4" },
+      { key:"xian_xian",    title:"弦線藝術",  id:"NSzdGj6QVpg" },
+  ]},
+  { zone:"z4", no:"第四區", name:"以律解謎", items:[
+      { key:"soma",         title:"索瑪立方體", id:"2WPKfQS_UmE" },
+      { key:"hua_fang",     title:"化方為方",   id:"AiPdJq2ngnk" },
+  ]},
+];
+
+const playicon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+
+function buildMenu(){
+  const wrap = document.getElementById('zones');
+  wrap.innerHTML = ZONES.map(z => `
+    <div class="zone ${z.zone}">
+      <div class="zone-tag"><span class="zn">${z.no}</span><span class="zname">${z.name}</span></div>
+      ${z.items.map(it => `
+        <button class="item ${(VIDEO_MODE==='local' || it.id) ? '' : 'coming'}" onclick="tapItem(this,'${it.key}','${it.id}','${it.title}')">
+          <span class="card"><img src="assets/btn_${it.key}.png" alt="${it.title}"></span>
+        </button>`).join('')}
+    </div>`).join('');
+}
+buildMenu();
+
+/* debug：#open 跳開門後、#menu 直接看選單頁（截圖用），平常都不觸發 */
+(function(){
+  const hw = document.querySelector('.house-wrap');
+  if(hw && location.hash.indexOf('open') >= 0) hw.classList.add('opened');
+  if(location.hash.indexOf('menu') >= 0){
+    document.getElementById('cover').classList.add('hidden');
+    document.getElementById('menu').classList.remove('hidden');
+  }
+  if(location.hash.indexOf('story') >= 0){
+    document.getElementById('cover').classList.add('hidden');
+    const st=document.getElementById('story'); st.classList.remove('hidden');
+    const segs=st.querySelectorAll('.seg'); segs[1].classList.add('show');
+  }
+})();
+
+/* 選單頁點 logo 回首頁 */
+function goHome(){
+  document.getElementById('menu').classList.add('hidden');
+  const st=document.getElementById('story');
+  st.classList.add('hidden');
+  st.querySelectorAll('.seg').forEach(s=>s.classList.remove('show'));
+  const cover=document.getElementById('cover');
+  cover.classList.remove('hidden','enter');
+  const hw=document.querySelector('.house-wrap'); if(hw) hw.classList.remove('opened');
+  clearTimeout(storyTimer); entering=false;
+  stopMusic();   /* 回首頁：音樂停止歸零，下次點開始探險再從頭播放 */
+}
+
+/* 先讓白卡壓下(看得到凹陷)，再開啟播放 */
+function tapItem(el, key, id, title){
+  el.classList.add('pressed');
+  setTimeout(()=>{ el.classList.remove('pressed'); openPlayer(key, id, title); }, 160);
+}
+
+/* 開始導覽：先開門 + NumNum 走到門前 → 封面淡出 → 進入導覽介紹 */
+let entering = false;
+function enterCover(){
+  if(entering) return; entering = true;
+  playMusicFromStart();   /* 按開始探險：音樂從頭播放 */
+  const hw = document.querySelector('.house-wrap');
+  if(hw) hw.classList.add('opened');
+  setTimeout(()=>{
+    document.getElementById('cover').classList.add('enter');
+    setTimeout(()=>{ document.getElementById('cover').classList.add('hidden'); startStory(); }, 600);
+  }, 2000);
+}
+
+/* 導覽介紹：分段出現，自動前進、可輕觸前進、可跳過 */
+let segIdx = 0, storyTimer = null;
+function startStory(){
+  const story = document.getElementById('story');
+  story.classList.remove('hidden');
+  const segs = story.querySelectorAll('.seg');
+  document.getElementById('storyDots').innerHTML =
+    Array.from(segs, () => '<i></i>').join('');
+  showSeg(0);
+}
+function showSeg(i){
+  const segs = document.querySelectorAll('#story .seg');
+  segs.forEach((s,k)=> s.classList.toggle('show', k===i));
+  document.querySelectorAll('#story .story-dots i').forEach((d,k)=> d.classList.toggle('on', k===i));
+  segIdx = i;
+  const last = i === segs.length-1;
+  document.getElementById('storyHint').textContent = last ? '輕觸進入萬數屋 ›' : '輕觸畫面繼續 ›';
+  clearTimeout(storyTimer);
+  const delay = (i===1 || i===2) ? 6800 : (i===3 ? 10000 : 7500);   /* 第2、3頁由原長頁拆半；四行那頁多停 */
+  storyTimer = setTimeout(()=> last ? goMenu() : showSeg(i+1), delay);
+}
+function nextSeg(){
+  const segs = document.querySelectorAll('#story .seg');
+  if(segIdx < segs.length-1) showSeg(segIdx+1);
+  else goMenu();   /* 最後一段：直接進選單 */
+}
+function prevSeg(){
+  if(segIdx > 0) showSeg(segIdx-1);   /* 已是第一頁則不動作 */
+}
+/* 點畫面左側→上一頁、右側→下一頁 */
+function storyTap(e){
+  if(e.clientX < window.innerWidth * 0.32) prevSeg();
+  else nextSeg();
+}
+function skipStory(){ clearTimeout(storyTimer); goMenu(); }
+
+function goMenu(){
+  clearTimeout(storyTimer);
+  document.getElementById('cover').classList.add('hidden');
+  const story = document.getElementById('story');
+  story.classList.add('hidden');
+  story.querySelectorAll('.seg').forEach(s => s.classList.remove('show'));  /* 清掉透明攔截層 */
+  document.getElementById('menu').classList.remove('hidden');
+}
+
+function openPlayer(key, id, title){
+  setDuck(true);   /* 影片播放時背景音樂淡出 */
+  const frame = document.getElementById('frame');
+  if(VIDEO_MODE === 'local'){
+    frame.innerHTML = `<video src="assets/videos/${key}.mp4" autoplay controls playsinline></video>`;
+  }else if(!id){
+    frame.innerHTML = `<div class="placeholder">🎬 ${title}<br>影片即將上線</div>`;
+  }else{
+    const src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1&color=white`;
+    frame.innerHTML = `<iframe src="${src}" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
+  }
+  document.getElementById('player').classList.remove('hidden');
+}
+
+function closePlayer(){
+  document.getElementById('player').classList.add('hidden');
+  document.getElementById('frame').innerHTML = '';   /* 停止影片/聲音 */
+  setDuck(false);   /* 影片關閉，背景音樂淡回 */
+}
+
+/* =====================================================================
+   背景音樂：播放音檔（可循環）
+   ★ 拿到 mp3 後，把檔名填進下面 MUSIC_SRC，例如 "assets/bgm.mp3" 即可。
+   - 首次觸控畫面才播放（瀏覽器規定），播放影片時自動淡出，左下鈕可靜音。
+   ===================================================================== */
+const MUSIC_SRC = "Sunlight Through the Leaves - Treblo.mp3";   /* 背景音樂檔（與 index.html 同資料夾） */
+const MUSIC_VOL = 0.45;        /* 音量 0~1 */
+let bgm=null, musicOn=true, duck=false;
+function applyVol(){ if(bgm) bgm.volume = (musicOn && !duck) ? MUSIC_VOL : 0; }
+function startMusic(){
+  if(!MUSIC_SRC) return;
+  if(!bgm){ bgm=document.getElementById('bgm'); bgm.src=MUSIC_SRC; bgm.loop=true; }
+  applyVol();
+  if(musicOn) bgm.play().catch(()=>{});
+}
+function setDuck(on){ duck=on; applyVol(); }
+/* 從頭播放（按「開始探險」時觸發） */
+function playMusicFromStart(){
+  if(!MUSIC_SRC) return;
+  if(!bgm){ bgm=document.getElementById('bgm'); bgm.src=MUSIC_SRC; bgm.loop=true; }
+  try{ bgm.currentTime = 0; }catch(e){}
+  applyVol();
+  if(musicOn) bgm.play().catch(()=>{});
+}
+/* 回首頁：停止並歸零（首頁安靜，下次點開始探險再從頭播放） */
+function stopMusic(){ if(bgm){ bgm.pause(); try{ bgm.currentTime = 0; }catch(e){} } }
+function toggleMusic(){
+  musicOn=!musicOn;
+  updateMusicIcon();
+  if(musicOn) startMusic();
+  applyVol();
+}
+/* 圖示：符合主視覺的圓角線條喇叭（品牌藍） */
+const ICON_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4-3v12l-4-3H4z" fill="currentColor"/><path d="M15.2 9a4.3 4.3 0 0 1 0 6"/><path d="M17.8 6.6a8 8 0 0 1 0 10.8"/></svg>';
+const ICON_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3l4-3v12l-4-3H4z" fill="currentColor"/><path d="M15.2 9.3l5.4 5.4M20.6 9.3l-5.4 5.4"/></svg>';
+function updateMusicIcon(){ const b=document.getElementById('musicBtn'); if(b) b.innerHTML = musicOn ? ICON_ON : ICON_OFF; }
+updateMusicIcon();
+</script>
+</body>
+</html>
