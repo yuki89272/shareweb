@@ -262,7 +262,6 @@ body.xmas .pick[aria-selected="true"]{background:#2e6f41;border-color:#2e6f41}
       <div class="tabs" role="group" aria-label="排行榜分類">
         <button data-tab="today" aria-pressed="true">今日</button>
         <button data-tab="best" aria-pressed="false">歷史最佳</button>
-        <button data-tab="link" aria-pressed="false">挑戰連結</button>
       </div>
       <ol class="lb" id="lbList"></ol>
       <div class="lbnote" id="lbNote"></div>
@@ -272,7 +271,7 @@ body.xmas .pick[aria-selected="true"]{background:#2e6f41;border-color:#2e6f41}
       <div class="row">
         <input type="text" id="nick" maxlength="10" placeholder="暱稱（不要用真實姓名）">
       </div>
-      <div id="shareArea" class="small">走到終點後，這裡會出現成績、上傳排行榜、分享文字、挑戰連結和成績圖。</div>
+      <div id="shareArea" class="small">走到終點後，這裡會出現成績、上傳排行榜、分享文字和成績圖。</div>
     </section>
   </div>
 
@@ -3074,19 +3073,18 @@ function renderShare(){
   const area = $('shareArea');
   $('myScope').textContent = W ? `${W.short}・${gName(grade)}` : '';
   const run = lastRun;
-  if (!run || !W || run.code !== W.code){ area.className = 'small'; area.innerHTML = '走到終點後，這裡會出現成績、上傳排行榜、分享文字、挑戰連結和成績圖。'; return; }
+  if (!run || !W || run.code !== W.code){ area.className = 'small'; area.innerHTML = '走到終點後，這裡會出現成績、上傳排行榜、分享文字和成績圖。'; return; }
   const link = run.task ? baseURL() + '#' + encodeChallenge(run.code, run.day, run.g, linkChain()) : '';
   const text = shareText(run, link);
   area.className = '';
   area.innerHTML = `<div class="score"><b>${run.task ? run.total.toFixed(1) : fmtT(run.t)}</b><span class="small">${run.task ? '/ 100 數感分' : '（數感任務關閉，不上榜）'}・${fmtT(run.t)}・${run.m} 公尺</span></div>
     ${run.task ? `<div class="row"><button class="btn pri" id="btnUp" ${LB.on && !LB.readOnly ? '' : 'disabled'}>上傳成績</button><span class="small" id="upMsg">${LB.on && !LB.readOnly ? '用上面的暱稱上傳；同一天保留最好的一次。' : esc(LB.offMsg)}</span></div>` : ''}
     <div class="sharebox" id="shareBox">${esc(text)}</div>
-    <div class="row"><button class="btn" id="btnCopy">複製成績</button>${run.task ? '<button class="btn" id="btnLink">複製挑戰連結</button>' : ''}<button class="btn" id="btnImg">製作成績圖</button></div>
+    <div class="row"><button class="btn" id="btnCopy">複製成績</button><button class="btn" id="btnImg">製作成績圖</button></div>
     <img class="shareimg" id="shareImg" alt="成績圖" hidden><div class="small" id="imgMsg"></div>`;
   area.style.display = 'grid'; area.style.gap = '10px';
   if ($('btnUp')) $('btnUp').onclick = upload;
   $('btnCopy').onclick = () => copyText(text, '成績已複製，可以貼到 LINE、Threads 或 IG', $('shareBox'));
-  if ($('btnLink')) $('btnLink').onclick = () => copyText(link, '挑戰連結已複製', $('shareBox'));
   $('btnImg').onclick = () => makeImage(run);
 }
 async function makeImage(run){
@@ -3128,7 +3126,7 @@ function boot(){
   if (['xinsheng','laomei','laomei-numeracy'].includes(h)) first = h;
   if (!['xinsheng','laomei','laomei-numeracy'].includes(first)) first = 'xinsheng';
   view = matchMedia('(max-width: 700px)').matches ? 'near' : 'all';
-  if (ch){ challenge = ch; playDay = ch.day; grade = ch.g; taskOn = true; pick(ch.id, {keepChallenge:true, hash:h}); setTab('link'); }
+  if (ch){ challenge = ch; playDay = ch.day; grade = ch.g; taskOn = true; pick(ch.id, {keepChallenge:true, hash:h}); setTab('today'); }
   else pick(first);
   setTheme(theme);
   requestAnimationFrame(frame);
@@ -3137,7 +3135,7 @@ function boot(){
 }
 addEventListener('hashchange', () => {
   const h = location.hash.slice(1);
-  if (h.startsWith('c-')){ const ch = decodeChallenge(h); if (ch){ challenge = ch; playDay = ch.day; grade = ch.g; taskOn = true; pick(ch.id, {keepChallenge:true, hash:h}); setTab('link'); } }
+  if (h.startsWith('c-')){ const ch = decodeChallenge(h); if (ch){ challenge = ch; playDay = ch.day; grade = ch.g; taskOn = true; pick(ch.id, {keepChallenge:true, hash:h}); setTab('today'); } }
   else if (['xinsheng','laomei','laomei-numeracy'].includes(h) && (!W || W.id !== h)) pick(h);
 });
 boot();
