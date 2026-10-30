@@ -3064,18 +3064,17 @@ function linkChain(){
 }
 function baseURL(){ return SHARE_URL && !SHARE_URL.startsWith('__') ? SHARE_URL : location.href.split('#')[0]; }
 
-function shareText(run, link){
+function shareText(run){
   const sq = v => v >= .85 ? '🟩' : v >= .6 ? '🟨' : v >= .3 ? '🟧' : '⬜';
   const p = run.parts;
-  return `台灣迷宮花園・${W.short} #${run.day} ${gName(run.g)}\n${run.task ? `數感分 ${run.total.toFixed(1)} / 100\n${sq(p.timePts/50)}${sq(p.routePts/10)}${sq(p.eu/30)}${sq(p.estPts/10)} 時間・路線・Eureka・比例尺\n` : ''}⏱ ${fmtT(run.t)}・走了 ${run.m} 公尺\n${link ? '同一座迷宮來挑戰我：' + link : ''}`;
+  return `台灣迷宮花園・${W.short} #${run.day} ${gName(run.g)}\n${run.task ? `數感分 ${run.total.toFixed(1)} / 100\n${sq(p.timePts/50)}${sq(p.routePts/10)}${sq(p.eu/30)}${sq(p.estPts/10)} 時間・路線・Eureka・比例尺\n` : ''}⏱ ${fmtT(run.t)}・走了 ${run.m} 公尺`;
 }
 function renderShare(){
   const area = $('shareArea');
   $('myScope').textContent = W ? `${W.short}・${gName(grade)}` : '';
   const run = lastRun;
   if (!run || !W || run.code !== W.code){ area.className = 'small'; area.innerHTML = '走到終點後，這裡會出現成績、上傳排行榜、分享文字和成績圖。'; return; }
-  const link = run.task ? baseURL() + '#' + encodeChallenge(run.code, run.day, run.g, linkChain()) : '';
-  const text = shareText(run, link);
+  const text = shareText(run);
   area.className = '';
   area.innerHTML = `<div class="score"><b>${run.task ? run.total.toFixed(1) : fmtT(run.t)}</b><span class="small">${run.task ? '/ 100 數感分' : '（數感任務關閉，不上榜）'}・${fmtT(run.t)}・${run.m} 公尺</span></div>
     ${run.task ? `<div class="row"><button class="btn pri" id="btnUp" ${LB.on && !LB.readOnly ? '' : 'disabled'}>上傳成績</button><span class="small" id="upMsg">${LB.on && !LB.readOnly ? '用上面的暱稱上傳；同一天保留最好的一次。' : esc(LB.offMsg)}</span></div>` : ''}
