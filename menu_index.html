@@ -1,0 +1,191 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NUMiNAI 教學工具坊</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: 品牌青綠頁首帶 + 兩欄工具卡（手機單欄），每張卡整塊可點 */
+:root {
+  --bg: #ECF8F6;
+  --surface: #FFFFFF;
+  --ink: #1E1E1E;
+  --muted: #515151;
+  --line: #C0E9E2;
+  --accent: #097881;
+  --accent-strong: #06565C;
+  --accent-soft: #D5F4EF;
+  --band: #097881;
+  --band-ink: #FFFFFF;
+  --font-display: 'Chiron GoRound TC', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  --font-body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1D1D; --surface: #152828; --ink: #E8F3F1; --muted: #A9BDBA; --line: #24403F;
+    --accent: #82D3C6; --accent-strong: #C0E9E2; --accent-soft: #1C3634;
+    --band: #06565C; --band-ink: #ECF8F6; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1D1D; --surface: #152828; --ink: #E8F3F1; --muted: #A9BDBA; --line: #24403F;
+  --accent: #82D3C6; --accent-strong: #C0E9E2; --accent-soft: #1C3634;
+  --band: #06565C; --band-ink: #ECF8F6; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header { background: var(--band); color: var(--band-ink); }
+header .wrap { padding-block: 48px 40px; display: grid; gap: 8px; }
+.eyebrow {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.9rem, 5vw, 2.8rem);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+header p { margin: 0; max-width: 34em; opacity: 0.9; }
+
+main .wrap { padding-block: 32px 56px; }
+.tools {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 640px) { .tools { grid-template-columns: 1fr; } }
+
+.tool {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  height: 100%;
+  padding: 22px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .15s, transform .15s;
+}
+.tool:hover { border-color: var(--accent); transform: translateY(-2px); }
+.tool:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.icon {
+  width: 52px; height: 52px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid; place-items: center;
+}
+.icon svg { width: 28px; height: 28px; }
+.text { min-width: 0; display: grid; gap: 2px; }
+.name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--accent-strong);
+}
+.desc { font-size: 0.92rem; color: var(--muted); }
+.go { color: var(--accent); font-size: 1.3rem; transition: transform .15s; }
+.tool:hover .go { transform: translateX(3px); }
+
+footer .wrap { padding-block: 0 32px; font-size: 0.85rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tool, .go { transition: none; }
+  .tool:hover, .tool:hover .go { transform: none; }
+}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">NUMiNAI</div>
+    <h1>教學工具坊</h1>
+    <p>從影片、動畫到數位講義與課堂討論，選一項開始製作教材。</p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <ul class="tools">
+      <li>
+        <a class="tool" href="https://claude.ai/artifact/JgoSnWv7u78yJwYKELS29i?sk=J6jXSWc7TU_ZupShZMrLPw" target="_blank" rel="noopener">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+          </span>
+          <span class="text">
+            <span class="name">影片製作</span>
+            <span class="desc">把教學內容做成講解影片</span>
+          </span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+      <li>
+        <a class="tool" href="https://claude.ai/artifact/DZL3XF8BK3MLojnd8BkFTd?sk=qjzyUMH4k5EaTRzULsebbA" target="_blank" rel="noopener">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="3"/><circle cx="16" cy="12" r="3" opacity=".55"/><path d="M3 20h18M3 4h18"/></svg>
+          </span>
+          <span class="text">
+            <span class="name">動畫製作</span>
+            <span class="desc">用動態圖解呈現數學概念</span>
+          </span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+      <li>
+        <a class="tool" href="https://claude.ai/artifact/X5GGM3X8y5fLx3Q41ufk2r?sk=gLo-Tvba6uis5YDA-m4JUg" target="_blank" rel="noopener">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h10l6 6v10H4z"/><path d="M14 4v6h6M8 14h8M8 18h5"/></svg>
+          </span>
+          <span class="text">
+            <span class="name">數位電子講義製作</span>
+            <span class="desc">編排可在螢幕上閱讀的講義</span>
+          </span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+      <li>
+        <a class="tool" href="https://claude.ai/artifact/THoQZAojAT698b2MuPFo2t?sk=iXmxXDGijglvVxZSiuQ80A" target="_blank" rel="noopener">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="3.5" r="1.5"/><circle cx="20.5" cy="12" r="1.5"/><circle cx="12" cy="20.5" r="1.5"/><circle cx="3.5" cy="12" r="1.5"/></svg>
+          </span>
+          <span class="text">
+            <span class="name">圓桌討論坊</span>
+            <span class="desc">安排課堂上的分組與圓桌討論</span>
+          </span>
+          <span class="go" aria-hidden="true">→</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">連結會在新分頁開啟。</div>
+</footer>
