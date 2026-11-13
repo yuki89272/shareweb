@@ -102,18 +102,15 @@ h2{margin:0 0 12px;font-size:18px;color:var(--teal-d);display:flex;align-items:c
       </div>
     </div>
     <div class="status">
-      <div class="equation" id="equation"><span class="q">把拼圖放進畫面裡…</span></div>
+      <div class="equation" id="equation"><span class="q">把畫好形狀的白紙放進畫面裡…</span></div>
       <div class="meter" title="辨識穩定度"><i id="meter"></i></div>
     </div>
-    <div class="hint">小提示：拼圖片放在<b>白色或素色桌面</b>上，片與片之間<b>留一點縫</b>，不要碰到畫面邊緣。保持 1 秒不動，樂器就會開始演奏！</div>
+    <div class="hint">小提示：把形狀<b>畫在或貼在白紙上</b>（塗滿或畫封閉外框都可以），形狀之間<b>留一指寬的空隙</b>、不要碰到白紙邊緣。系統只看白紙裡面的圖形，背景和手都會被忽略。保持 1 秒不動，樂器就會開始演奏！</div>
     <div class="tools">
-      <button class="btn small ghost" id="calBtn" title="先拍一張沒有拼圖的空桌面，背景很花時特別有用">📷 背景校正</button>
-      <button class="btn small ghost" id="clrCal">清除校正</button>
-      <label>靈敏度 <input type="range" id="sens" min="1" max="10" value="5"></label>
+      <label title="筆跡太淡偵測不到 → 調高；紙上陰影被誤判 → 調低">筆跡靈敏度 <input type="range" id="sens" min="1" max="10" value="5"></label>
       <label><input type="checkbox" id="showMask"> 顯示偵測遮罩</label>
       <label class="btn small ghost" style="display:inline-flex">🖼 上傳照片辨識<input type="file" id="photo" accept="image/*" hidden></label>
       <button class="btn small ghost" id="printBtn">🖨 列印拼圖紙樣</button>
-      <span id="calState" style="color:#4b6b6c"></span>
     </div>
   </section>
 
@@ -252,30 +249,56 @@ function renderRecipes(matchId){
 renderRecipes();
 
 /* ================== 影像辨識 ================== */
-const PW = 192, PH = 144;                 // 處理用解析度
+const PW = 256, PH = 192;                 // 處理用解析度
+const N = PW*PH;
 const proc = document.createElement('canvas'); proc.width = PW; proc.height = PH;
 const pctx = proc.getContext('2d', {willReadFrequently:true});
-let bgRef = null;                         // 背景校正影像
 let sens = 5;
 
-function buildMask(data){
-  const n = PW*PH, mask = new Uint8Array(n);
-  const satThr = 0.46 - sens*0.03;        // 1→0.43 … 10→0.16
-  const darkThr = 0.12 + sens*0.02;
-  const diffThr = 150 - sens*10;
-  for (let i=0, p=0; i<n; i++, p+=4){
-    const r=data[p], g=data[p+1], b=data[p+2];
-    if (bgRef){
-      const d = Math.abs(r-bgRef[p]) + Math.abs(g-bgRef[p+1]) + Math.abs(b-bgRef[p+2]);
-      mask[i] = d > diffThr ? 1 : 0;
-    } else {
-      const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
-      const v = mx/255, s = mx ? (mx-mn)/mx : 0;
-      mask[i] = ((s > satThr && v > 0.2) || v < darkThr) ? 1 : 0;
-    }
+/* 步驟 1：標出「不像白紙」的像素（墨水、色塊、背景、手…） */
+function buildInk(data){
+  const S = new Float32Array(N), V = new Float32Array(N), hist = new Uint32Array(101);
+  for (let i=0,p=0;i<N;i++,p+=4){
+    const r=data[p],g=data[p+1],b=data[p+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+    V[i]=mx/255; S[i]= mx ? (mx-mn)/mx : 0;
+    if (S[i] < 0.25) hist[Math.round(V[i]*100)]++;
   }
-  return mask;
+  // 白紙亮度 ≈ 低飽和像素的第 90 百分位
+  let tot=0; for (const h of hist) tot+=h;
+  let acc=0, p90=0.8; for (let v=0; v<=100; v++){ acc+=hist[v]; if (acc >= tot*0.9){ p90=v/100; break; } }
+  const vThr = p90 * (0.82 - sens*0.025);   // 靈敏度高 → 較淡的筆跡也算
+  const sThr = 0.30 - sens*0.012;
+  const ink = new Uint8Array(N);
+  for (let i=0;i<N;i++) ink[i] = (S[i] > sThr || V[i] < vThr) ? 1 : 0;
+  return {ink, p90};
 }
+function morphN(m, erode, n){ for (let k=0;k<n;k++) m = morph(m, erode); return m; }
+function components(mask, cb){
+  const labels = new Int32Array(N), stack = new Int32Array(N); let next = 0;
+  for (let s=0; s<N; s++){
+    if (!mask[s] || labels[s]) continue;
+    next++; let sp=0; stack[sp++]=s; labels[s]=next; const pix=[];
+    while (sp){
+      const i = stack[--sp]; pix.push(i); const x=i%PW, y=(i/PW)|0;
+      if (x>0 && mask[i-1] && !labels[i-1]){labels[i-1]=next;stack[sp++]=i-1;}
+      if (x<PW-1 && mask[i+1] && !labels[i+1]){labels[i+1]=next;stack[sp++]=i+1;}
+      if (y>0 && mask[i-PW] && !labels[i-PW]){labels[i-PW]=next;stack[sp++]=i-PW;}
+      if (y<PH-1 && mask[i+PW] && !labels[i+PW]){labels[i+PW]=next;stack[sp++]=i+PW;}
+    }
+    cb(next, pix, labels);
+  }
+  return labels;
+}
+function hullOf(pix, labels, id){
+  const pts=[];
+  for (const i of pix){
+    const x=i%PW, y=(i/PW)|0;
+    if (x===0||y===0||x===PW-1||y===PH-1||labels[i-1]!==id||labels[i+1]!==id||labels[i-PW]!==id||labels[i+PW]!==id)
+      pts.push([x,y],[x+1,y],[x,y+1],[x+1,y+1]);
+  }
+  return pts.length ? convexHull(pts) : [];
+}
+
 function morph(mask, erode){
   const out = new Uint8Array(mask.length);
   for (let y=0; y<PH; y++) for (let x=0; x<PW; x++){
@@ -326,43 +349,38 @@ function classify(area, hull){
   return {type, solidity, fill, circ, aspect};
 }
 function detect(imgData){
-  let mask = buildMask(imgData.data);
-  mask = morph(morph(mask,true),false);   // 開運算去雜點
-  mask = morph(morph(mask,false),true);   // 閉運算補小洞
-  const labels = new Int32Array(PW*PH); let next = 0;
-  const stack = new Int32Array(PW*PH);
-  const minArea = PW*PH*0.004, maxArea = PW*PH*0.6;
+  // 1. 墨水遮罩 + 閉運算（把塗鴉筆觸之間的白縫補起來）
+  let {ink} = buildInk(imgData.data);
+  ink = morphN(morphN(ink,false,1),true,1);
+  // 2. 找最大的白紙區塊
+  const paperMask = new Uint8Array(N); for (let i=0;i<N;i++) paperMask[i] = ink[i]?0:1;
+  let best = null;
+  const plab = components(paperMask, (id,pix)=>{ if (!best || pix.length > best.pix.length) best = {id, pix}; });
+  if (!best || best.pix.length < N*0.12) return {pieces:[], counts:{}, mask:new Uint8Array(N), paper:null};
+  const paperHull = hullOf(best.pix, plab, best.id);
+  // 3. 從畫面邊緣往內灌水：碰得到邊緣的非白紙區域 = 背景 / 手，排除
+  const outside = new Uint8Array(N), st = new Int32Array(N); let sp=0;
+  const isPaper = i => plab[i]===best.id;
+  const push = i => { if (!outside[i] && !isPaper(i)){ outside[i]=1; st[sp++]=i; } };
+  for (let x=0;x<PW;x++){ push(x); push((PH-1)*PW+x); }
+  for (let y=0;y<PH;y++){ push(y*PW); push(y*PW+PW-1); }
+  while (sp){ const i=st[--sp], x=i%PW, y=(i/PW)|0;
+    if (x>0) push(i-1); if (x<PW-1) push(i+1); if (y>0) push(i-PW); if (y<PH-1) push(i+PW); }
+  // 4. 被白紙完整包住的區域 = 紙上的圖形（只畫外框也會自動填滿）
+  const holes = new Uint8Array(N); for (let i=0;i<N;i++) holes[i] = (!isPaper(i) && !outside[i]) ? 1 : 0;
+  const paperArea = best.pix.length;
+  const minArea = Math.max(40, paperArea*0.006);
   const pieces = [];
-  for (let s=0; s<PW*PH; s++){
-    if (!mask[s] || labels[s]) continue;
-    next++; let sp=0; stack[sp++]=s; labels[s]=next;
-    let area=0, touches=false, minx=PW,miny=PH,maxx=0,maxy=0; const pix=[];
-    while (sp){
-      const i = stack[--sp]; area++; pix.push(i);
-      const x=i%PW, y=(i/PW)|0;
-      if (x===0||y===0||x===PW-1||y===PH-1) touches=true;
-      if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y;
-      if (x>0 && mask[i-1] && !labels[i-1]){labels[i-1]=next;stack[sp++]=i-1;}
-      if (x<PW-1 && mask[i+1] && !labels[i+1]){labels[i+1]=next;stack[sp++]=i+1;}
-      if (y>0 && mask[i-PW] && !labels[i-PW]){labels[i-PW]=next;stack[sp++]=i-PW;}
-      if (y<PH-1 && mask[i+PW] && !labels[i+PW]){labels[i+PW]=next;stack[sp++]=i+PW;}
-    }
-    if (area < minArea || area > maxArea || touches) continue;
-    const pts = [];
-    for (const i of pix){
-      const x=i%PW, y=(i/PW)|0;
-      if (x===0||y===0||x===PW-1||y===PH-1|| labels[i-1]!==next||labels[i+1]!==next||labels[i-PW]!==next||labels[i+PW]!==next){
-        pts.push([x,y],[x+1,y],[x,y+1],[x+1,y+1]);
-      }
-    }
-    const hull = convexHull(pts);
-    if (hull.length < 3) continue;
-    const c = classify(area, hull);
-    pieces.push({...c, area, hull, cx:(minx+maxx+1)/2, cy:(miny+maxy+1)/2});
-  }
+  components(holes, (id,pix,labels)=>{
+    if (pix.length < minArea) return;
+    for (const i of pix){ const x=i%PW, y=(i/PW)|0; if (x<3||y<3||x>PW-4||y>PH-4) return; }  // 貼著畫面邊緣的不算
+    const hull = hullOf(pix, labels, id); if (hull.length < 3) return;
+    let sx=0, sy=0; for (const i of pix){ sx+=i%PW; sy+=(i/PW)|0; }
+    pieces.push({...classify(pix.length, hull), area:pix.length, hull, cx:sx/pix.length+0.5, cy:sy/pix.length+0.5});
+  });
   const counts = {};
   pieces.forEach(p => counts[p.type] = (counts[p.type]||0)+1);
-  return {pieces, counts, mask};
+  return {pieces, counts, mask:holes, paper:paperHull};
 }
 function matchInstrument(counts){
   if (counts.unknown) return null;
@@ -415,6 +433,10 @@ function drawOverlay(){
     for (let i=0;i<PW*PH;i++){ if(last.mask[i]){ id.data[i*4]=10; id.data[i*4+1]=172; id.data[i*4+2]=163; id.data[i*4+3]=150; } }
     mctx.putImageData(id,0,0); vctx.imageSmoothingEnabled=false; vctx.drawImage(maskCanvas,0,0,view.width,view.height); vctx.imageSmoothingEnabled=true;
   }
+  if (last.paper){
+    vctx.beginPath(); last.paper.forEach((q,i)=> i? vctx.lineTo(q[0]*sx,q[1]*sy) : vctx.moveTo(q[0]*sx,q[1]*sy)); vctx.closePath();
+    vctx.lineWidth = 3; vctx.strokeStyle = '#0aaca3'; vctx.setLineDash([10,8]); vctx.stroke(); vctx.setLineDash([]);
+  }
   for (const p of last.pieces){
     const col = COL[p.type] || '#888';
     vctx.beginPath(); p.hull.forEach((q,i)=> i? vctx.lineTo(q[0]*sx,q[1]*sy) : vctx.moveTo(q[0]*sx,q[1]*sy)); vctx.closePath();
@@ -452,18 +474,13 @@ function detectTick(){
 function setMeter(v){ document.getElementById('meter').style.width = (v*100)+'%'; }
 function updateStatus(ins){
   const eq = document.getElementById('equation');
-  if (!last.pieces.length) eq.innerHTML = '<span class="q">把拼圖放進畫面裡…</span>';
+  if (!last.paper) eq.innerHTML = '<span class="q">📄 找不到白紙，請把白紙放進畫面</span>';
+  else if (!last.pieces.length) eq.innerHTML = '<span class="q">白紙找到了！在紙上畫或貼上形狀…</span>';
   else eq.innerHTML = eqHTML(last.counts, ins ? `<b style="color:var(--teal-d)">${ins.name}！</b>` : '<span class="q">？</span>');
   renderRecipes(ins && ins.id);
 }
 
 /* 背景校正 / 靈敏度 / 上傳照片 */
-document.getElementById('calBtn').onclick = () => {
-  const img = grabProc(); if (!img){ toast('請先開始遊戲或上傳照片'); return; }
-  bgRef = new Uint8ClampedArray(img.data);
-  document.getElementById('calState').textContent = '✅ 已校正（背景比對模式）'; toast('背景已記住！現在把拼圖放上去吧');
-};
-document.getElementById('clrCal').onclick = () => { bgRef = null; document.getElementById('calState').textContent = ''; };
 document.getElementById('sens').oninput = e => sens = +e.target.value;
 document.getElementById('printBtn').onclick = () => window.print();
 document.getElementById('photo').onchange = e => {
@@ -474,7 +491,7 @@ document.getElementById('photo').onchange = e => {
     const id = grabProc(); last = detect(id);
     const ins = matchInstrument(last.counts); updateStatus(ins);
     drawSource(vctx, view.width, view.height); drawOverlay();
-    if (ins) startPlay(ins, true); else toast('沒有找到符合的樂器配方，看看圖鑑再試試！');
+    if (ins) startPlay(ins, true); else toast(last.paper ? '沒有找到符合的樂器配方，看看圖鑑再試試！' : '照片裡找不到白紙喔');
     if (video.srcObject) setTimeout(()=>{ stillImage = null; }, 100);
   };
   img.src = URL.createObjectURL(f); e.target.value='';
