@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NUMINA 台北數感地圖</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Huninn&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+
+/* Layout: 浮空島式台北地圖（黃底、地層切面），右側角色托盤＋集章護照；窄螢幕上下排列 */
+:root{
+  --teal:#0aaca3; --teal-d:#097881; --teal-l:#82d3c6; --teal-ll:#c0e9e2; --mint:#ecf8f6;
+  --sky:#00b1e0; --sky-d:#0093b8; --sky-l:#6de2f3; --sky-ll:#d9ffff;
+  --red:#e83e48; --orange:#ff9600; --blue:#2b70c9; --yellow:#f3e43b; --ink:#0b3b40; --white:#fff;
+  --ink-soft:#3f6f72;
+  --display:"Huninn","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  color-scheme:light;
+}
+html,body{background:var(--mint);color:var(--ink)}
+body{font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(24px,3.4vw,36px);margin:0;color:var(--teal-d);letter-spacing:.02em;text-wrap:balance}
+h1 span{color:var(--orange)}
+.sub{margin:2px 0 0;color:var(--ink-soft);font-size:14px}
+.score{display:flex;align-items:center;gap:10px;background:var(--white);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:999px;padding:6px 16px 6px 8px;font-weight:700}
+.score b{font-family:var(--display);font-weight:400;font-size:22px;color:var(--teal-d);font-variant-numeric:tabular-nums}
+.score .dot{width:30px;height:30px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-family:var(--display);color:var(--ink);border:2px solid var(--ink)}
+
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:900px){.game{grid-template-columns:minmax(0,1fr)}}
+
+.mapbox{position:relative;isolation:isolate;width:100%;aspect-ratio:1000/940;max-width:100%;background:var(--yellow);border-radius:24px;overflow:hidden;border:3px solid var(--ink);box-shadow:0 6px 0 var(--ink)}
+.mapbox svg.map{position:absolute;inset:0;width:100%;height:100%;display:block}
+.overlay{position:absolute;inset:0;pointer-events:none}
+.overlay>*{pointer-events:auto}
+
+.dname{font-family:var(--display);font-size:17px;fill:var(--teal-d);opacity:.7;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+.lm{cursor:pointer}
+.lm .hit{fill:transparent}
+.lm .lbl-bg{fill:var(--white);stroke:var(--ink);stroke-width:2}
+.lm .lbl{font-family:var(--body);font-weight:700;font-size:14px;fill:var(--ink);text-anchor:middle;pointer-events:none}
+.lm .art{transform-box:fill-box;transform-origin:50% 100%;transition:transform .2s}
+.lm:hover .art,.lm:focus-visible .art{transform:scale(1.06)}
+.lm:focus{outline:none}
+.lm:focus-visible .lbl-bg{stroke:var(--orange);stroke-width:3}
+.lm.near .art{transform:scale(1.12)}
+.lm.near .ring{opacity:1}
+.lm .ring{fill:none;stroke:var(--red);stroke-width:4;stroke-dasharray:8 8;opacity:0;transition:opacity .15s}
+.lm .star{opacity:0;transition:opacity .3s}
+.lm.done .star{opacity:1}
+.lm.active .art{animation:hop .6s ease-in-out 3}
+@keyframes hop{0%,100%{transform:translateY(0) scale(1)}40%{transform:translateY(-12px) scale(1.08,1.04)}70%{transform:translateY(0) scale(1.04,.96)}}
+
+/* 地標循環動畫 */
+.lit{animation:lit 2.4s ease-in-out infinite}
+@keyframes lit{0%,100%{fill:#6de2f3}50%{fill:#f3e43b}}
+.beacon{animation:blink 1.2s steps(2,jump-none) infinite}
+@keyframes blink{50%{opacity:.15}}
+.sway{transform-box:fill-box;transform-origin:50% 0;animation:sway 2.2s ease-in-out infinite alternate}
+@keyframes sway{from{transform:rotate(-9deg)}to{transform:rotate(9deg)}}
+.tsway{transform-box:fill-box;transform-origin:50% 100%;animation:tsway 3s ease-in-out infinite alternate}
+@keyframes tsway{from{transform:rotate(-4deg)}to{transform:rotate(4deg)}}
+.steam{transform-box:fill-box;transform-origin:50% 100%;animation:steam 2.6s ease-in-out infinite}
+@keyframes steam{0%{opacity:0;transform:translateY(8px) scaleY(.7)}40%{opacity:.95}100%{opacity:0;transform:translateY(-16px) scaleY(1.15)}}
+.twinkle{transform-box:fill-box;transform-origin:50% 50%;animation:twinkle 1.8s ease-in-out infinite}
+@keyframes twinkle{0%,100%{transform:scale(.3);opacity:.2}50%{transform:scale(1);opacity:1}}
+.takeoff{transform-box:fill-box;transform-origin:50% 50%;animation:takeoff 7s ease-in infinite}
+@keyframes takeoff{0%{transform:translate(-50px,0);opacity:0}10%{opacity:1}28%{transform:translate(0,0)}62%{transform:translate(120px,-100px) rotate(-16deg);opacity:1}72%{transform:translate(150px,-125px) rotate(-16deg);opacity:0}100%{transform:translate(-50px,0);opacity:0}}
+.flag{transform-box:fill-box;transform-origin:0 50%;animation:flag .9s ease-in-out infinite alternate}
+@keyframes flag{from{transform:skewY(-8deg) scaleX(.9)}to{transform:skewY(8deg) scaleX(1)}}
+.bob{animation:bob 5s ease-in-out infinite alternate}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-22px)}}
+.drift{animation:drift linear infinite}
+@keyframes drift{from{transform:translateX(-200px)}to{transform:translateX(1200px)}}
+.windows{animation:winglow 3s ease-in-out infinite alternate}
+@keyframes winglow{from{fill:#f3e43b}to{fill:#fff}}
+.spin{transform-box:fill-box;transform-origin:50% 50%;animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 遊客（聲紋試衣間人物） */
+.walker{position:absolute;width:5.4%;aspect-ratio:180/222;transform:translate(-50%,-96%);cursor:pointer;background-repeat:no-repeat;background-size:400% 100%;background-position:0 0;filter:drop-shadow(0 2px 0 rgba(11,59,64,.25))}
+.walker.walk{animation:walkcyc .5s steps(4) infinite}
+@keyframes walkcyc{from{background-position:0 0}to{background-position:133.333% 0}}
+.walker.flip{transform:translate(-50%,-96%) scaleX(-1)}
+.walker.flip .bubble{transform:translate(-50%,-6px) scaleX(-1)}
+.walker:focus-visible{outline:3px solid var(--red);outline-offset:2px;border-radius:8px}
+
+/* NUMINA 角色 */
+.chr{position:absolute;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;transform:translate(-50%,-100%);filter:drop-shadow(0 4px 0 rgba(11,59,64,.3));z-index:5}
+.chr svg{display:block;width:100%;height:auto}
+.chr.drag{cursor:grabbing;position:fixed;z-index:50;transform:translate(-50%,-80%) scale(1.12)}
+.chr.placed{animation:land .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes land{0%{transform:translate(-50%,-140%) scale(.9)}100%{transform:translate(-50%,-100%) scale(1)}}
+.chr:focus-visible{outline:3px solid var(--orange);outline-offset:4px;border-radius:12px}
+.bubble{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-6px);background:var(--white);color:var(--ink);border:2px solid var(--ink);border-radius:14px;padding:4px 10px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;animation:pop .25s ease-out;z-index:9}
+.bubble::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:7px solid transparent;border-top-color:var(--ink)}
+@keyframes pop{from{opacity:0}}
+
+aside{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--white);border-radius:20px;padding:14px 16px;border:3px solid var(--ink)}
+.panel h2{font-family:var(--display);font-weight:400;font-size:19px;margin:0 0 4px;color:var(--teal-d)}
+.panel p.hint{margin:0 0 10px;font-size:13px;color:var(--ink-soft);line-height:1.6}
+.tray{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-around;gap:10px 6px;min-height:110px;background:var(--mint);border-radius:14px;padding:10px 6px 12px}
+.slot{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:52px}
+.slot .holder{position:relative;height:84px;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.slot .holder .chr{position:relative;transform:none;left:auto;top:auto}
+.slot .holder .chr.placed{animation:none}
+.slot .nm{font-family:var(--display);font-size:13px;color:var(--ink)}
+.slot.out .nm{color:var(--teal-l)}
+.slot.out .nm::after{content:" ・出遊中"}
+.btnrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+.btn{border:2px solid var(--ink);border-radius:999px;padding:7px 14px;font-weight:700;font-size:14px;background:var(--teal);color:var(--white);box-shadow:0 3px 0 var(--ink)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.btn.ghost{background:var(--white);color:var(--ink)}
+.btn.warm{background:var(--yellow);color:var(--ink)}
+.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.vis{display:flex;flex-wrap:wrap;gap:6px}
+.vis button{all:unset;cursor:pointer;width:38px;height:46px;border-radius:10px;background:var(--mint);border:2px solid var(--teal-ll);display:grid;place-items:center}
+.vis button:focus-visible{outline:3px solid var(--orange)}
+.vis canvas{width:30px;height:37px}
+
+.passport{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stamp{aspect-ratio:1;border-radius:50%;border:2px dashed var(--teal-ll);display:grid;place-items:center;text-align:center;font-size:11px;line-height:1.2;color:var(--teal-l);padding:4px;cursor:pointer;background:none}
+.stamp.got{border:3px solid var(--red);color:var(--red);font-weight:900;transform:rotate(-8deg);background:#fff5f5}
+.stamp.got.new{animation:stampin .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes stampin{0%{transform:scale(2) rotate(-30deg);opacity:0}100%{transform:scale(1) rotate(-8deg);opacity:1}}
+
+.sheet{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(460px,calc(100% - 32px));background:var(--white);border-radius:22px;border:3px solid var(--ink);box-shadow:0 8px 0 var(--ink),0 20px 50px rgba(11,59,64,.25);padding:16px 18px 18px;z-index:40;animation:sheetin .3s cubic-bezier(.3,1.4,.5,1);max-height:calc(100% - 40px);overflow:auto}
+@keyframes sheetin{from{transform:translate(-50%,30px);opacity:0}}
+.sheet .top{display:flex;gap:12px;align-items:center}
+.sheet .face{width:56px;flex:none}
+.sheet .tag{display:inline-block;font-size:12px;font-weight:700;color:var(--white);background:var(--teal-d);border-radius:999px;padding:2px 10px}
+.sheet h3{font-family:var(--display);font-weight:400;font-size:24px;margin:4px 0 0;color:var(--ink)}
+.sheet .say{background:var(--mint);border-radius:14px;padding:8px 12px;margin:12px 0 0;font-weight:700;color:var(--teal-d);font-size:14px}
+.sheet .fact{margin:10px 0 0;line-height:1.7;font-size:15px}
+.sheet .num{font-family:var(--display);color:var(--orange);font-size:1.15em}
+.sheet .formula{font-family:"Fredoka",var(--body);font-size:14px;background:var(--ink);color:var(--sky-ll);border-radius:12px;padding:8px 12px;overflow-x:auto;white-space:nowrap;margin-top:10px}
+.sheet .formula em{color:var(--yellow);font-style:normal;font-weight:600}
+.sheet .big{display:flex;gap:14px;align-items:center}
+.sheet .big canvas{width:130px;height:160px;flex:none;background:linear-gradient(180deg,#f4feff,#d9ffff);border-radius:16px;border:2px solid var(--ink)}
+.quiz{margin-top:12px;border-top:2px dashed var(--teal-ll);padding-top:12px}
+.quiz .q{font-weight:700;margin:0 0 10px;line-height:1.6}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{border:2px solid var(--teal-ll);background:var(--white);border-radius:14px;padding:10px;font-weight:700;font-size:15px;color:var(--ink)}
+.opt:hover{border-color:var(--teal)}
+.opt.right{background:var(--teal);border-color:var(--teal);color:var(--white)}
+.opt.wrong{background:#fff0f0;border-color:var(--red);color:var(--red);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.result{margin:10px 0 0;font-weight:700;line-height:1.6}
+.result.ok{color:var(--teal-d)}.result.no{color:var(--red)}
+.close{position:absolute;top:10px;right:10px;width:34px;height:34px;border-radius:50%;border:0;background:var(--mint);color:var(--teal-d);font-size:20px;line-height:1}
+.toast{position:fixed;top:max(16px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:10px 18px;border-radius:999px;font-weight:700;z-index:60;animation:pop .3s}
+.confetti{position:fixed;width:10px;height:14px;z-index:70;pointer-events:none;border-radius:3px;animation:fall 1.4s ease-in forwards}
+@keyframes fall{to{transform:translate(var(--dx),110vh) rotate(720deg);opacity:.8}}
+.foot{font-size:12px;color:var(--ink-soft);margin:0}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>NUMINA <span>台北</span>數感地圖</h1>
+      <p class="sub">地標會動、遊客會逛街。把數感角色拖到地標上，答對數學題就能蓋章！</p>
+    </div>
+    <div class="score" aria-live="polite"><span class="dot">章</span>集章 <b id="scoreN">0</b> / 12</div>
+  </header>
+
+  <div class="game">
+    <div class="mapbox" id="mapbox">
+      <svg class="map" id="map" viewBox="0 0 1000 940" role="img" aria-label="台北市十二行政區插畫地圖"></svg>
+      <div class="overlay" id="overlay"></div>
+    </div>
+
+    <aside>
+      <section class="panel">
+        <h2>數感小隊</h2>
+        <p class="hint">按住角色拖到地圖上的地標，放開就會開始探索。拖回這裡可以讓角色休息。</p>
+        <div class="tray" id="tray"></div>
+        <div class="btnrow">
+          <button class="btn" id="tourBtn">隨機出發</button>
+          <button class="btn ghost" id="homeBtn">全員回家</button>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>聲紋遊客</h2>
+        <p class="hint">穿著聲紋衣的遊客正在台北散步，點一下遊客就能看他衣服上的克拉尼圖形。</p>
+        <div class="vis" id="visList"></div>
+        <div class="btnrow"><button class="btn warm" id="addWalker">再來一位遊客</button></div>
+      </section>
+      <section class="panel">
+        <h2>台北數感護照</h2>
+        <p class="hint">每個地標答對一題就能蓋一個章。點章可以重新查看地標。</p>
+        <div class="passport" id="passport"></div>
+        <div class="btnrow"><button class="btn ghost" id="resetBtn">清空護照</button></div>
+      </section>
+      <p class="foot">地圖為插畫示意，行政區形狀與位置經過簡化。</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+(async function(){
+const SVGNS="http://www.w3.org/2000/svg", VW=1000, VH=940;
+const C={teal:"#0aaca3",tealD:"#097881",tealL:"#82d3c6",tealLL:"#c0e9e2",mint:"#ecf8f6",sky:"#00b1e0",skyD:"#0093b8",skyL:"#6de2f3",skyLL:"#d9ffff",red:"#e83e48",redD:"#b52a33",orange:"#ff9600",orangeD:"#c46f00",blue:"#2b70c9",blueD:"#1d4f91",yellow:"#f3e43b",yellowD:"#c9bb20",ink:"#0b3b40",white:"#fff",shade:"#d6ecea"};
+const $=id=>document.getElementById(id);
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const pick=a=>a[Math.floor(rnd()*a.length)];
+
+/* ================= 地理（示意） ================= */
+const P={A:[150,300],B:[170,200],C:[250,110],D:[350,60],E:[450,40],F:[540,70],G:[610,130],H:[660,230],I:[760,250],J:[850,300],K:[900,390],L:[920,480],M:[880,560],N:[800,600],O:[820,680],Pp:[790,780],Q:[700,850],R:[590,860],S:[520,800],T:[480,730],U:[420,700],V:[350,700],W:[300,640],X:[290,560],p25:[290,520],Y:[280,470],Z:[250,400],p3:[240,350],p1:[420,170],p2:[340,280],p4:[620,330],p5:[520,360],p6:[400,370],p7:[800,420],p8:[690,420],p9:[600,420],p10:[560,470],p11:[420,470],p12:[700,480],p13:[610,490],p14:[730,520],p16:[640,590],p17:[490,470],p18:[610,680],p19:[500,690],p21:[720,670],p24:[400,510],p26:[420,620]};
+const OUTER="A B C D E F G H I J K L M N O Pp Q R S T U V W X p25 Y Z p3".split(" ");
+const DIST=[
+ {n:"北投區",k:"A B C D E p1 p2 p3",hill:1},
+ {n:"士林區",k:"E F G H p4 p5 p6 Z p3 p2 p1",hill:1},
+ {n:"內湖區",k:"H I J K p7 p8 p4",hill:1},
+ {n:"中山區",k:"p6 p5 p4 p9 p10 p17 p11"},
+ {n:"松山區",k:"p4 p8 p12 p13 p10 p9"},
+ {n:"南港區",k:"K L M N p14 p12 p8 p7",hill:1},
+ {n:"信義區",k:"p13 p12 p14 N p21 p18 p16"},
+ {n:"大安區",k:"p17 p10 p13 p16 p18 p19"},
+ {n:"大同區",k:"Z p6 p11 p24 p25 Y"},
+ {n:"萬華區",k:"p25 p24 p26 U V W X"},
+ {n:"中正區",k:"p11 p17 p19 T U p26 p24"},
+ {n:"文山區",k:"p19 p18 p21 N O Pp Q R S T",hill:1}
+].map(d=>({...d,pts:d.k.split(" ").map(k=>P[k])}));
+const LBL={"北投區":[200,330],"士林區":[600,270],"內湖區":[880,350],"中山區":[590,385],"松山區":[705,425],"南港區":[870,530],"信義區":[785,650],"大安區":[600,660],"大同區":[385,500],"萬華區":[290,670],"中正區":[455,690],"文山區":[540,780]};
+const outerPts=OUTER.map(k=>P[k]);
+const ptsStr=a=>a.map(p=>p.join(",")).join(" ");
+function inPoly(x,y,pts){let ins=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const[xi,yi]=pts[i],[xj,yj]=pts[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))ins=!ins;}return ins;}
+function distSeg(px,py,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;let t=l?((px-a[0])*dx+(py-a[1])*dy)/l:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-a[0]-t*dx,py-a[1]-t*dy);}
+function distLine(x,y,line){let m=1e9;for(let i=0;i<line.length-1;i++)m=Math.min(m,distSeg(x,y,line[i],line[i+1]));return m;}
+const smooth=pts=>{let d=`M${pts[0][0]} ${pts[0][1]}`;for(let i=1;i<pts.length-1;i++){const m=[(pts[i][0]+pts[i+1][0])/2,(pts[i][1]+pts[i+1][1])/2];d+=` Q${pts[i][0]} ${pts[i][1]} ${m[0]} ${m[1]}`;}const l=pts[pts.length-1];return d+` L${l[0]} ${l[1]}`;};
+
+/* 捷運與步道 */
+const MRT=[
+ {name:"淡水信義線",col:C.red,pts:[[290,240],[360,292],[430,330],[452,395],[440,470],[432,520],[452,590],[540,612],[620,610],[690,600]]},
+ {name:"板南線",col:C.blue,pts:[[300,590],[345,565],[390,535],[432,520],[530,522],[600,530],[680,540],[760,520],[800,500],[835,478]]},
+ {name:"文湖線",col:C.orange,pts:[[640,800],[620,720],[598,660],[566,622],[560,540],[575,490],[620,452],[662,432],[700,398],[760,382],[815,410],[835,478]]}
+];
+const TRAILS=[[[262,410],[282,480],[298,560],[318,640],[362,690]],[[240,250],[330,300],[430,262],[520,262],[600,300],[650,290]],[[700,640],[760,700],[740,780],[660,820]]];
+const ROADS=[[[300,515],[860,515]],[[430,560],[700,560]],[[445,330],[445,520]],[[520,360],[520,690]],[[600,400],[600,680]],[[650,470],[720,680]],[[330,420],[600,440]]];
+
+/* ================= SVG 小工具 ================= */
+const box=(x,y,w,h,d,cf,cs,ct)=>`<path d="M${x} ${y-h}h${w}v${h}h${-w}z" fill="${cf}"/><path d="M${x+w} ${y}l${d} ${-d*.6}v${-h}l${-d} ${d*.6}z" fill="${cs}"/><path d="M${x} ${y-h}h${w}l${d} ${-d*.6}h${-w}z" fill="${ct}"/>`;
+const eave=(cx,y,w,h,col,colD)=>`<path d="M${cx-w/2-12} ${y-2} Q${cx-w/2+2} ${y-3} ${cx-w/2+10} ${y-h} L${cx+w/2-10} ${y-h} Q${cx+w/2-2} ${y-3} ${cx+w/2+12} ${y-2} Q${cx} ${y+4} ${cx-w/2-12} ${y-2}Z" fill="${col}"/><path d="M${cx-w/2+10} ${y-h} L${cx+w/2-10} ${y-h}" stroke="${colD}" stroke-width="4" stroke-linecap="round"/><path d="M${cx-w/2-4} ${y-2} Q${cx} ${y+2} ${cx+w/2+4} ${y-2}" stroke="${colD}" stroke-width="2" fill="none" opacity=".6"/>`;
+const shadow=(rx,ry=10,dx=6)=>`<ellipse cx="${dx}" cy="3" rx="${rx}" ry="${ry}" fill="${C.ink}" opacity=".16"/>`;
+const lantern=(x,y,col=C.red,dl=0)=>`<g class="sway" style="animation-delay:${dl}s"><path d="M${x} ${y-8}v6" stroke="${C.ink}" stroke-width="1.5"/><ellipse cx="${x}" cy="${y+3}" rx="5" ry="6" fill="${col}"/><rect x="${x-3}" y="${y-3}" width="6" height="2" fill="${C.yellow}"/><rect x="${x-3}" y="${y+8}" width="6" height="2" fill="${C.yellow}"/></g>`;
+const roundTree=(x,y,s=1,c1=C.teal,c2=C.tealD,cls="tsway",dl=0)=>`<g class="${cls}" style="animation-delay:${dl}s"><rect x="${x-2*s}" y="${y-10*s}" width="${4*s}" height="${10*s}" fill="${C.orangeD}"/><circle cx="${x}" cy="${y-16*s}" r="${10*s}" fill="${c1}"/><path d="M${x} ${y-26*s}a${10*s} ${10*s} 0 0 1 0 ${20*s}z" fill="${c2}" opacity=".55"/></g>`;
+const coneTree=(x,y,s=1)=>`<path d="M${x} ${y-24*s}L${x+8*s} ${y}H${x-8*s}Z" fill="${C.tealD}"/><path d="M${x} ${y-24*s}L${x+8*s} ${y}H${x}Z" fill="${C.ink}" opacity=".25"/>`;
+
+/* ================= 地標插畫（原點：底部中心） ================= */
+const ART={
+ t101(){let s=shadow(56,12,10)+box(-36,0,62,24,18,C.tealL,C.teal,C.tealLL);
+   for(const x of [-28,-14,0,14])s+=`<rect x="${x}" y="-18" width="8" height="12" rx="2" fill="${C.white}" opacity=".7"/>`;
+   let y=-24;for(let i=0;i<8;i++){
+     s+=`<path d="M-18 ${y}H18L24 ${y-18}H-24Z" fill="${C.teal}"/><path d="M18 ${y}l9 -5 6 -18 -9 5z" fill="${C.tealD}"/><path d="M-24 ${y-18}H24l9 -5H-15z" fill="${C.tealLL}"/>`;
+     s+=`<rect class="lit" style="animation-delay:${(7-i)*.22}s" x="-17" y="${y-12}" width="36" height="3.5" rx="1.7" fill="${C.skyL}"/><circle cx="-20" cy="${y-16}" r="2.5" fill="${C.yellow}"/>`;
+     y-=20;}
+   s+=box(-13,y,26,20,9,C.teal,C.tealD,C.tealLL)+`<rect x="-4" y="${y-48}" width="8" height="28" rx="3" fill="${C.tealD}"/><rect x="-1.5" y="${y-80}" width="3" height="34" fill="${C.ink}"/><circle class="beacon" cx="0" cy="${y-82}" r="5" fill="${C.red}"/>`;
+   return `<g transform="scale(.74)">${s}</g>`;},
+ cks(){let s=shadow(80,14,10)+box(-76,0,140,10,24,C.white,C.shade,C.mint)+box(-62,-10,112,10,20,C.white,C.shade,C.mint);
+   s+=`<path d="M-24 0 L-18 -20 H10 L16 0Z" fill="${C.mint}"/>`;for(let i=0;i<6;i++)s+=`<path d="M${-23+i} ${-3-i*3}H${15-i}" stroke="${C.tealLL}" stroke-width="1.2"/>`;
+   s+=box(-38,-20,68,40,14,C.white,C.shade,C.white)+`<path d="M-12 -20v-18a8 8 0 0 1 16 0v18z" fill="${C.blue}"/>`;
+   s+=`<path d="M-54 -58 Q-4 -66 46 -58 L34 -74 H-42Z" fill="${C.blue}"/><path d="M46 -58 l10 -6 -10 -14 -12 4z" fill="${C.blueD}"/>`;
+   s+=box(-22,-72,36,10,8,C.white,C.shade,C.white)+`<path d="M-34 -80 Q-4 -86 26 -80 L10 -104 H-18Z" fill="${C.blue}"/><path d="M26 -80l7 -5 -14 -21 -9 2z" fill="${C.blueD}"/><circle class="beacon" cx="-4" cy="-108" r="5" fill="${C.yellow}" style="animation-duration:2.6s"/>`;
+   s+=`<g><animateTransform attributeName="transform" type="rotate" from="0 -4 -80" to="360 -4 -80" dur="9s" repeatCount="indefinite"/><path d="M-4 -150 q5 -5 10 0 q5 -5 10 0" stroke="${C.white}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M60 -80 q4 -4 8 0 q4 -4 8 0" stroke="${C.white}" stroke-width="3" fill="none" stroke-linecap="round"/></g>`;
+   return s;},
+ lss(){let s=shadow(66)+`<rect x="-62" y="-12" width="124" height="12" fill="${C.shade}"/>`+box(-52,0,94,34,16,C.red,C.redD,C.red);
+   s+=`<path d="M-14 0v-22h20v22z" fill="${C.ink}"/><path d="M-12 0v-20h16v20z" fill="${C.orangeD}" opacity=".6"/>`;
+   for(const x of [-44,-30,18,32])s+=`<rect x="${x}" y="-28" width="7" height="28" fill="${C.redD}"/>`;
+   s+=eave(-4,-30,110,14,C.orange,C.orangeD)+box(-34,-40,58,14,10,C.red,C.redD,C.red)+eave(-4,-54,74,14,C.orange,C.orangeD);
+   s+=`<path d="M-38 -70 q-8 -10 2 -14 M30 -70 q8 -10 -2 -14" stroke="${C.teal}" stroke-width="5" fill="none" stroke-linecap="round"/><circle class="beacon" cx="-4" cy="-74" r="6" fill="${C.yellow}" style="animation-duration:2.2s"/>`;
+   s+=lantern(-50,-24,C.red,0)+lantern(42,-24,C.red,.6);
+   s+=`<rect x="-6" y="10" width="12" height="8" rx="2" fill="${C.orangeD}"/>`;
+   for(let i=0;i<3;i++)s+=`<path class="steam" style="animation-delay:${i*.85}s" d="M${-3+i*3} 8 q-5 -7 0 -14 q5 -7 0 -14" stroke="${C.white}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+   return s;},
+ dhs(){let s=shadow(66);const cols=[[C.orange,C.orangeD],[C.white,C.shade],[C.red,C.redD],[C.yellow,C.yellowD]];
+   cols.forEach(([a,b],i)=>{const x=-60+i*28,h=46+(i%2)*8;s+=box(x,0,28,h,i===3?12:0,a,b,a);
+     s+=`<path d="M${x+6} 0v-14a8 8 0 0 1 16 0v14z" fill="${C.ink}"/><path d="M${x+6} ${-h+12}h16v12h-16z" fill="${C.sky}"/><path d="M${x+6} ${-h+12}a8 6 0 0 1 16 0z" fill="${C.white}"/>`;
+     s+=`<path d="M${x} ${-h} q14 ${-14} 28 0z" fill="${a}"/><circle cx="${x+14}" cy="${-h-5}" r="3" fill="${C.white}"/>`;});
+   s+=`<path d="M-60 -24 Q-4 -12 52 -24" stroke="${C.ink}" stroke-width="1.2" fill="none"/>`;
+   [-50,-30,-10,10,30].forEach((x,i)=>s+=lantern(x,-19+Math.abs(x+4)*.12*-1+4,i%2?C.red:C.orange,i*.3));
+   s+=`<g class="flag"><rect x="56" y="-60" width="16" height="22" fill="${C.red}"/><text x="64" y="-44" font-size="12" text-anchor="middle" fill="${C.yellow}" font-weight="900">茶</text></g><rect x="54" y="-62" width="2.5" height="62" fill="${C.ink}"/>`;
+   return s;},
+ grand(){let s=shadow(80)+box(-74,0,132,26,20,C.red,C.redD,C.red);
+   for(let i=0;i<8;i++)s+=`<rect class="windows" style="animation-delay:${i*.3}s" x="${-68+i*16}" y="-20" width="9" height="10" rx="2" fill="${C.yellow}"/>`;
+   s+=eave(-8,-26,148,12,C.orange,C.orangeD)+box(-56,-36,96,22,14,C.red,C.redD,C.red);
+   for(let i=0;i<6;i++)s+=`<rect class="windows" style="animation-delay:${i*.4+.2}s" x="${-50+i*15}" y="-52" width="8" height="10" rx="2" fill="${C.yellow}"/>`;
+   s+=eave(-8,-58,116,12,C.orange,C.orangeD)+box(-22,-68,30,12,8,C.red,C.redD,C.red)+eave(-8,-80,58,14,C.orange,C.orangeD)+`<circle class="beacon" cx="-8" cy="-98" r="5" fill="${C.yellow}" style="animation-duration:3s"/>`;
+   s+=lantern(-66,-4,C.yellow,0)+lantern(52,-4,C.yellow,.5);
+   return s;},
+ npm(){let s=shadow(80)+box(-80,0,150,10,22,C.mint,C.shade,C.white);
+   s+=`<path d="M-20 0 L-14 -10 H6 L12 0Z" fill="${C.tealLL}"/>`+box(-66,-10,122,26,16,C.white,C.shade,C.white);
+   for(let i=0;i<7;i++)s+=`<rect x="${-60+i*16}" y="-32" width="6" height="22" fill="${C.tealLL}"/>`;
+   s+=eave(-5,-36,140,12,C.tealD,C.ink)+box(-38,-46,66,16,10,C.white,C.shade,C.white)+eave(-5,-62,92,14,C.tealD,C.ink)+`<rect x="-10" y="-90" width="10" height="14" fill="${C.yellow}"/>`;
+   [[-60,-100,0],[40,-96,.6],[-6,-120,1.1],[70,-60,.3]].forEach(([x,y,d])=>s+=`<path class="twinkle" style="animation-delay:${d}s" d="M${x} ${y-8}L${x+2.5} ${y-2.5}L${x+8} ${y}L${x+2.5} ${y+2.5}L${x} ${y+8}L${x-2.5} ${y+2.5}L${x-8} ${y}L${x-2.5} ${y-2.5}Z" fill="${C.white}"/>`);
+   return s;},
+ bt(){let s=shadow(64)+`<ellipse cx="44" cy="-2" rx="22" ry="8" fill="${C.skyL}"/>`+box(-50,0,80,32,18,C.orange,C.orangeD,C.orange);
+   for(let i=0;i<4;i++)s+=`<rect x="${-44+i*18}" y="-26" width="12" height="14" fill="${C.white}"/><path d="M${-38+i*18} -26v14" stroke="${C.orangeD}" stroke-width="1.5"/>`;
+   s+=`<path d="M-58 -30 L-10 -60 L38 -30Z" fill="${C.tealD}"/><path d="M38 -30 L-10 -60 L8 -71 L56 -41Z" fill="${C.teal}"/><path d="M-22 -52 L-10 -60 L2 -52" fill="${C.white}"/>`;
+   for(let i=0;i<4;i++)s+=`<path class="steam" style="animation-delay:${i*.6}s" d="M${30+i*10} -10 q-6 -9 0 -18 q6 -9 0 -18" stroke="${C.white}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+   return s;},
+ bridge(){let s=`<ellipse cx="0" cy="0" rx="84" ry="22" fill="${C.sky}"/><ellipse cx="0" cy="-2" rx="78" ry="17" fill="${C.skyL}"/>`;
+   for(let i=0;i<2;i++)s+=`<ellipse cx="-40" cy="4" rx="4" ry="2" fill="none" stroke="${C.white}" stroke-width="1.5"><animate attributeName="rx" values="4;26" dur="3s" begin="${i*1.5}s" repeatCount="indefinite"/><animate attributeName="ry" values="2;8" dur="3s" begin="${i*1.5}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="3s" begin="${i*1.5}s" repeatCount="indefinite"/></ellipse>`;
+   s+=`<path d="M-46 -2 A46 46 0 0 1 46 -2" fill="none" stroke="${C.red}" stroke-width="9"/><path d="M-46 -2 A46 46 0 0 1 46 -2" fill="none" stroke="${C.white}" stroke-width="2" transform="translate(0 -5)"/><path d="M-46 -2 A46 30 0 0 0 46 -2" fill="none" stroke="${C.red}" stroke-width="5" stroke-dasharray="6 5" opacity=".45"/>`;
+   for(let i=-3;i<=3;i++){const a=Math.PI*(i+3.5)/7.5;const x=-46*Math.cos(Math.PI*(i+3)/6),y=-2-46*Math.sin(Math.PI*(i+3)/6);s+=`<rect x="${x-1}" y="${y-8}" width="2" height="8" fill="${C.redD}"/>`;}
+   s+=`<path d="M-54 -2 L-66 6 M54 -2 L66 6" stroke="${C.ink}" stroke-width="4" stroke-linecap="round"/>`;
+   s+=`<g><animateMotion dur="9s" repeatCount="indefinite" path="M-60 6 L60 6 L-60 6" rotate="0"/><ellipse cx="0" cy="0" rx="7" ry="4" fill="${C.white}"/><circle cx="6" cy="-4" r="3.2" fill="${C.white}"/><path d="M9 -4 l4 1 -4 1z" fill="${C.orange}"/></g>`;
+   s+=roundTree(-76,-10,.8,C.teal,C.tealD,"tsway",.2)+roundTree(80,-12,.9,C.teal,C.tealD,"tsway",.7);
+   return s;},
+ airport(){let s=shadow(78,10,4)+`<path d="M-80 4 L70 4 L84 -6 L-66 -6Z" fill="${C.ink}"/>`;
+   for(let i=0;i<7;i++)s+=`<rect class="beacon" style="animation-delay:${i*.15}s" x="${-62+i*20}" y="-2" width="10" height="2" fill="${C.yellow}"/>`;
+   s+=box(-74,-10,56,22,12,C.white,C.shade,C.white)+`<rect x="-70" y="-26" width="48" height="6" fill="${C.sky}"/>`+box(-12,-10,10,40,6,C.white,C.shade,C.white)+box(-17,-50,20,10,8,C.sky,C.skyD,C.skyL);
+   s+=`<g class="takeoff"><path d="M10 -16 H54 Q64 -16 64 -12 Q64 -8 54 -8 H10Z" fill="${C.white}" stroke="${C.blue}" stroke-width="1.6"/><path d="M28 -12 L40 -30 H46 L40 -12Z M28 -12 L40 4 H46 L40 -12Z" fill="${C.blue}"/><path d="M10 -16 L5 -27 H13 L19 -16Z" fill="${C.red}"/><rect x="44" y="-14" width="10" height="3" fill="${C.skyL}"/></g>`;
+   s+=`<g class="flag"><path d="M68 -30 l16 4 -16 4z" fill="${C.orange}"/></g><rect x="66" y="-32" width="2" height="26" fill="${C.ink}"/>`;
+   return s;},
+ expo(){let s=shadow(76)+box(-70,0,126,30,20,C.white,C.shade,C.white);
+   for(let i=0;i<9;i++)s+=`<rect x="${-64+i*14}" y="-26" width="9" height="26" fill="${C.skyL}"/>`;
+   s+=`<path d="M-76 -28 Q-52 -52 -28 -32 Q-4 -52 20 -32 Q44 -52 62 -30 L76 -42 Q58 -60 34 -44 Q10 -64 -14 -44 Q-38 -64 -62 -40Z" fill="${C.sky}"/><path d="M-76 -28 Q-52 -52 -28 -32 Q-4 -52 20 -32 Q44 -52 62 -30" stroke="${C.skyD}" stroke-width="3" fill="none"/>`;
+   [[-80,C.red,0],[-62,C.yellow,.2],[70,C.orange,.4],[88,C.teal,.6]].forEach(([x,c,d])=>s+=`<rect x="${x}" y="-46" width="2" height="46" fill="${C.ink}"/><g class="flag" style="animation-delay:${d}s"><rect x="${x+2}" y="-46" width="12" height="16" fill="${c}"/></g>`);
+   return s;},
+ park(){let s=`<ellipse cx="0" cy="-4" rx="88" ry="30" fill="${C.teal}" opacity=".55"/><ellipse cx="22" cy="2" rx="22" ry="7" fill="${C.skyL}"/>`;
+   [[-60,-6,1.1],[-36,-18,1.3],[-10,-22,1.4],[50,-14,1.2],[70,2,1],[-70,10,.9],[-30,10,1],[8,4,1.1]].forEach(([x,y,k],i)=>s+=roundTree(x,y,k,i%2?C.teal:C.tealL,C.tealD,"tsway",i*.35));
+   s+=`<g><animateMotion dur="7s" repeatCount="indefinite" path="M-70 -80 Q0 -120 70 -70 Q0 -40 -70 -80Z" rotate="0"/><path d="M-6 0 q3 -4 6 0 q3 -4 6 0" stroke="${C.ink}" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
+   return s;},
+ gondola(){let s=`<path d="M-96 4 Q-80 -36 -44 -30 Q-20 -72 16 -64 Q44 -102 84 -76 Q100 -60 104 4Z" fill="${C.teal}"/><path d="M16 -64 Q44 -102 84 -76 Q100 -60 104 4 H40Z" fill="${C.tealD}" opacity=".6"/>`;
+   for(let i=0;i<6;i++)s+=`<path d="M${-70+i*26} ${-8-i*7} q8 -4 16 0" stroke="${C.tealLL}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+   const cab=`M-80 -32 L-10 -70 L76 -118`;s+=`<path d="${cab}" stroke="${C.ink}" stroke-width="2" fill="none"/>`;
+   [[-80,-32],[-10,-70],[76,-118]].forEach(([x,y])=>s+=`<path d="M${x} ${y} l-5 ${30} h10z" fill="${C.ink}"/>`);
+   [0,1.6,3.2,4.8].forEach((b,i)=>s+=`<g><animateMotion dur="6.4s" begin="-${b}s" repeatCount="indefinite" path="${cab}"/><path d="M0 0 v8" stroke="${C.ink}" stroke-width="1.5"/><rect x="-7" y="8" width="14" height="12" rx="4" fill="${[C.orange,C.red,C.yellow,C.sky][i]}"/><rect x="-4" y="11" width="8" height="4" rx="1.5" fill="${C.white}"/></g>`);
+   s+=`<rect x="56" y="-38" width="20" height="14" fill="${C.white}"/><path d="M52 -38 L66 -48 L80 -38Z" fill="${C.red}"/>`;
+   return s;}
+};
+const LM=[
+ {id:"t101",name:"台北101",d:"信義區",x:705,y:600,r:50,
+  fact:'台北101 高 <span class="num">508</span> 公尺，地上 <span class="num">101</span> 層，上半部由 <span class="num">8</span> 節造型堆疊，像一節節竹子。',
+  q:"「101」這個數字，除了 1 和它自己之外，還能被其他整數整除嗎？",opts:["可以，它是合數","不行，它是質數"],a:1,why:"試試 2、3、5、7 都除不盡，而 √101 約等於 10，所以 101 是質數！"},
+ {id:"cks",name:"中正紀念堂",d:"中正區",x:445,y:622,r:75,
+  fact:'走上主堂要爬 <span class="num">89</span> 級階梯。89 是個很特別的數，它出現在費氏數列裡。',
+  q:"費氏數列：1, 1, 2, 3, 5, 8, 13, 21, 34, 55, ？ 下一個是多少？",opts:["66","89","76","110"],a:1,why:"每一項都是前兩項相加：34 + 55 = 89。"},
+ {id:"lss",name:"龍山寺",d:"萬華區",x:345,y:640,r:65,
+  fact:'艋舺龍山寺創建於 <span class="num">1738</span> 年，是台北最古老的寺廟之一。',
+  q:"從 1738 年到 2026 年，龍山寺已經有多少年歷史？",opts:["278 年","288 年","298 年","388 年"],a:1,why:"2026 − 1738 = 288 年。"},
+ {id:"dhs",name:"迪化街",d:"大同區",x:330,y:452,r:65,
+  fact:'迪化街的老街屋大多「面寬窄、進深長」，一間店往裡面走可以一路通到後街。',
+  q:"假設一間街屋寬 5 公尺、深 40 公尺，地板面積是多少？",opts:["45 平方公尺","200 平方公尺","90 平方公尺","400 平方公尺"],a:1,why:"長方形面積 = 長 × 寬 = 40 × 5 = 200 平方公尺。"},
+ {id:"grand",name:"圓山大飯店",d:"中山區",x:500,y:425,r:75,
+  fact:'紅柱金瓦的圓山大飯店主建築在 <span class="num">1973</span> 年落成，是台北最好認的宮殿式建築。',
+  q:"1973 這個年份很酷，它是質數嗎？（提示：√1973 約是 44.4）",opts:["是質數","不是質數"],a:0,why:"用 2 到 43 的質數一個一個試都除不盡，所以 1973 是質數。"},
+ {id:"npm",name:"故宮博物院",d:"士林區",x:520,y:215,r:78,
+  fact:'故宮收藏的文物大約有 <span class="num">70</span> 萬件，翠玉白菜和肉形石都是明星展品。',
+  q:"如果每天看 100 件文物，大約要看幾天才看得完 70 萬件？",opts:["700 天","7,000 天","70,000 天","70 天"],a:1,why:"700,000 ÷ 100 = 7,000 天，大約是 19 年！"},
+ {id:"bt",name:"北投溫泉博物館",d:"北投區",x:270,y:250,r:62,
+  fact:'北投溫泉博物館原本是 <span class="num">1913</span> 年建成的公共浴場，附近的地熱谷終年冒著白煙。',
+  q:"這棟建築到 2026 年已經幾歲了？",opts:["103 歲","113 歲","123 歲","93 歲"],a:1,why:"2026 − 1913 = 113 歲。"},
+ {id:"bridge",name:"大湖公園錦帶橋",d:"內湖區",x:745,y:318,r:75,
+  fact:'錦帶橋是一座半圓形的拱橋。天氣好、水面平靜時，橋和倒影會拼在一起。',
+  q:"半圓形拱橋加上它在水中的倒影，看起來會變成什麼形狀？",opts:["正方形","三角形","完整的圓","橢圓的一半"],a:2,why:"倒影就是對稱的另一半，兩個半圓拼起來是一個完整的圓（線對稱）。"},
+ {id:"airport",name:"松山機場",d:"松山區",x:640,y:470,r:70,
+  fact:'松山機場就在市區裡，是少見的「城市機場」，常常可以看到飛機從大樓上方飛過。',
+  q:"飛機 9:45 起飛，飛行 1 小時 50 分鐘，幾點抵達？",opts:["10:35","11:35","11:25","10:95"],a:1,why:"9:45 加 1 小時是 10:45，再加 50 分鐘是 11:35。"},
+ {id:"expo",name:"南港展覽館",d:"南港區",x:830,y:470,r:72,
+  fact:'南港展覽館常舉辦大型展覽，展場會先畫成一格一格的攤位。',
+  q:"一個攤位是 3 公尺 × 3 公尺，4 個攤位排在一起，總面積是多少？",opts:["12 平方公尺","24 平方公尺","36 平方公尺","48 平方公尺"],a:2,why:"一格 3 × 3 = 9 平方公尺，4 格就是 9 × 4 = 36 平方公尺。"},
+ {id:"park",name:"大安森林公園",d:"大安區",x:555,y:580,r:80,
+  fact:'大安森林公園面積大約 <span class="num">26</span> 公頃，被稱為台北的「都市之肺」。',
+  q:"1 公頃 = 10,000 平方公尺。26 公頃是多少平方公尺？",opts:["2,600","26,000","260,000","2,600,000"],a:2,why:"26 × 10,000 = 260,000 平方公尺。"},
+ {id:"gondola",name:"貓空纜車",d:"文山區",x:670,y:770,r:85,
+  fact:'貓空纜車從動物園一路爬上貓空，沿線有 <span class="num">4</span> 個載客站，全長大約 <span class="num">4</span> 公里。',
+  q:"4 個車站排成一條線，站與站之間一共有幾段纜線？",opts:["3 段","4 段","5 段","8 段"],a:0,why:"就像種樹問題：4 個點連成一條線，中間只有 4 − 1 = 3 段。"}
+];
+
+/* ================= 組地圖 ================= */
+const svg=$("map");
+const outerD="M"+outerPts.map(p=>p.join(" ")).join(" L")+"Z";
+let s=`<defs><clipPath id="land"><path d="${outerD}"/></clipPath>
+ <pattern id="stripe" width="60" height="26" patternUnits="userSpaceOnUse"><rect width="60" height="26" fill="${C.yellow}"/><rect y="20" width="34" height="3" rx="1.5" fill="#fff" opacity=".45"/><rect x="40" y="8" width="14" height="3" rx="1.5" fill="${C.orange}" opacity=".18"/></pattern></defs>
+ <rect width="${VW}" height="${VH}" fill="url(#stripe)"/>`;
+/* 熱氣球、彩虹、雲 */
+s+=`<g transform="translate(860 150)">${[C.blue,C.teal,C.white,C.orange,C.red].map((c,i)=>`<path d="M${-80+i*9} 0 A${80-i*9} ${80-i*9} 0 0 1 ${80-i*9} 0" fill="none" stroke="${c}" stroke-width="9"/>`).join("")}<ellipse cx="-70" cy="0" rx="34" ry="16" fill="#fff"/><ellipse cx="-48" cy="-8" rx="20" ry="14" fill="#fff"/><ellipse cx="74" cy="2" rx="34" ry="16" fill="#fff"/><ellipse cx="54" cy="-8" rx="22" ry="14" fill="#fff"/></g>`;
+s+=`<g transform="translate(90 120)"><g class="bob"><path d="M-34 0 A34 38 0 1 1 34 0 Q20 26 8 44 H-8 Q-20 26 -34 0Z" fill="${C.white}"/><path d="M-20 -30 Q-26 10 -8 44 H-2 Q-12 6 -6 -37Z M20 -30 Q26 10 8 44 H2 Q12 6 6 -37Z" fill="${C.red}"/><path d="M-34 0 Q-30 20 -8 44 H-14 Q-34 22 -34 0Z M34 0 Q30 20 8 44 H14 Q34 22 34 0Z" fill="${C.orange}"/><path d="M-6 44 L-8 56 M6 44 L8 56" stroke="${C.ink}" stroke-width="1.5"/><rect x="-10" y="56" width="20" height="14" rx="2" fill="${C.orangeD}"/><text x="0" y="68" text-anchor="middle" font-size="11" fill="${C.yellow}" font-family="Fredoka,sans-serif" font-weight="700">π</text></g></g>`;
+/* 浮空島地層 */
+for(let k=40;k>=2;k-=2){const col=k>32?C.ink:k>22?C.orangeD:k>10?C.orange:C.tealD;s+=`<path d="${outerD}" fill="${col}" transform="translate(0 ${k})" stroke="${col}" stroke-width="10" stroke-linejoin="round"/>`;}
+for(let i=0;i<46;i++){const p=outerPts[Math.floor(rnd()*outerPts.length)];}
+s+=`<path d="${outerD}" fill="${C.tealLL}" stroke="${C.tealLL}" stroke-width="10" stroke-linejoin="round"/>`;
+/* 行政區 */
+DIST.forEach(d=>s+=`<polygon points="${ptsStr(d.pts)}" fill="${d.hill?C.tealL:C.tealLL}" stroke="${C.white}" stroke-width="2.5" stroke-dasharray="7 6" stroke-linejoin="round"/>`);
+s+=`<g clip-path="url(#land)">`;
+/* 河流 */
+s+=`<path d="${smooth([[352,712],[318,650],[300,566],[288,480],[260,405],[220,350],[150,310]])}" fill="none" stroke="${C.sky}" stroke-width="22" stroke-linecap="round"/><path d="${smooth([[352,712],[318,650],[300,566],[288,480],[260,405],[220,350],[150,310]])}" fill="none" stroke="${C.skyL}" stroke-width="12" stroke-linecap="round" stroke-dasharray="26 18"><animate attributeName="stroke-dashoffset" from="0" to="-88" dur="4s" repeatCount="indefinite"/></path>`;
+const klr=[[262,402],[330,388],[400,372],[470,365],[540,348],[610,334],[650,380],[690,412],[760,400],[820,415],[880,440],[915,470]];
+s+=`<path d="${smooth(klr)}" fill="none" stroke="${C.sky}" stroke-width="15" stroke-linecap="round"/><path d="${smooth(klr)}" fill="none" stroke="${C.skyL}" stroke-width="7" stroke-linecap="round" stroke-dasharray="20 14"><animate attributeName="stroke-dashoffset" from="0" to="68" dur="4s" repeatCount="indefinite"/></path>`;
+const jm=[[500,790],[560,810],[640,820],[720,800],[790,760],[815,700]];
+s+=`<path d="${smooth(jm)}" fill="none" stroke="${C.sky}" stroke-width="11" stroke-linecap="round"/>`;
+/* 道路 */
+ROADS.forEach(r=>s+=`<path d="M${r.map(p=>p.join(" ")).join(" L")}" stroke="${C.white}" stroke-width="8" stroke-linecap="round" opacity=".9"/>`);
+TRAILS.forEach(t=>s+=`<path d="${smooth(t)}" stroke="${C.white}" stroke-width="5" fill="none" stroke-dasharray="2 8" stroke-linecap="round"/>`);
+/* 捷運 */
+MRT.forEach(m=>{const d=smooth(m.pts);m.d=d;s+=`<path d="${d}" stroke="${C.ink}" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".25" transform="translate(0 2)"/><path d="${d}" stroke="${m.col}" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;});
+MRT.forEach((m,mi)=>{
+  for(let k=0;k<2;k++)s+=`<g><animateMotion dur="${16+mi*3}s" begin="-${k*8+mi*2}s" repeatCount="indefinite" rotate="auto" keyPoints="0;1;0" keyTimes="0;.5;1" calcMode="linear" path="${m.d}"/><rect x="-16" y="-4.5" width="32" height="9" rx="4" fill="${C.white}" stroke="${m.col}" stroke-width="2"/><rect x="-12" y="-2" width="24" height="3" fill="${m.col}"/></g>`;
+  m.pts.forEach((p,i)=>{if(i%2===0||i===m.pts.length-1)s+=`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="${C.white}" stroke="${C.ink}" stroke-width="2"/>`;});
+});
+s+=`</g>`;
+/* 山、房子、樹：依 y 排序 */
+const items=[];
+const mountain=(x,y,w,h,c1=C.teal,c2=C.tealD)=>`<path d="M${x-w/2} ${y} L${x-w*.08} ${y-h} Q${x} ${y-h-6} ${x+w*.08} ${y-h} L${x+w/2} ${y}Z" fill="${c1}"/><path d="M${x} ${y-h-3} Q${x+w*.08} ${y-h} ${x+w*.08} ${y-h} L${x+w/2} ${y} L${x+w*.1} ${y}Z" fill="${c2}"/><path d="M${x-w*.2} ${y-h*.62} q${w*.1} -${h*.1} ${w*.2} 0 q${w*.1} -${h*.1} ${w*.2} 0" stroke="#fff" stroke-width="3" fill="none" opacity=".7"/>`;
+[[340,170,150,110],[440,135,120,96],[200,240,110,70],[620,180,120,80],[860,370,100,70],[580,820,120,56],[790,830,130,70]].forEach(([x,y,w,h])=>items.push({y,svg:mountain(x,y,w,h)}));
+const nearLm=(x,y,pad=0)=>LM.some(l=>Math.hypot(l.x-x,(l.y-30)-y)<l.r+pad);
+const nearLines=(x,y)=>MRT.some(m=>distLine(x,y,m.pts)<16)||ROADS.some(r=>distLine(x,y,r)<10)||distLine(x,y,klr)<16;
+const urban=DIST.filter(d=>!d.hill);
+let tries=0,houses=0;
+while(houses<190&&tries<6000){tries++;const x=150+rnd()*780,y=60+rnd()*800;if(!inPoly(x,y,outerPts)||nearLm(x,y,8)||nearLines(x,y))continue;
+  const inUrban=urban.some(d=>inPoly(x,y,d.pts));if(!inUrban&&rnd()<.75)continue;
+  if(Math.hypot(x-260,y-500)<30)continue;
+  const w=9+rnd()*7,d=5;
+  if(inUrban&&rnd()<.35){const h=18+rnd()*26,c=pick([[C.white,C.shade],[C.skyLL,C.sky],[C.mint,C.tealL]]);let b=box(x-w/2,y,w,h,d,c[0],c[1],C.white);for(let yy=y-h+4;yy<y-3;yy+=6)b+=`<rect x="${x-w/2+2}" y="${yy}" width="${w-4}" height="2" fill="${C.sky}" opacity=".6"/>`;items.push({y,svg:b});}
+  else{const h=7+rnd()*5,wall=pick([C.white,C.white,C.mint,C.yellow]),roof=pick([C.red,C.orange,C.blue,C.tealD]);
+    items.push({y,svg:box(x-w/2,y,w,h,d,wall,C.shade,wall)+`<path d="M${x-w/2-1} ${y-h}L${x} ${y-h-w*.45}L${x+w/2+1} ${y-h}Z" fill="${roof}"/><path d="M${x} ${y-h-w*.45}L${x+w/2+1} ${y-h}l${d} ${-d*.6}L${x+d} ${y-h-w*.45-d*.6}Z" fill="${roof}" opacity=".8"/>`});}
+  houses++;}
+let trees=0;tries=0;
+while(trees<200&&tries<6000){tries++;const x=150+rnd()*780,y=60+rnd()*800;if(!inPoly(x,y,outerPts)||nearLm(x,y,0)||nearLines(x,y))continue;
+  const hill=DIST.some(d=>d.hill&&inPoly(x,y,d.pts));if(!hill&&rnd()<.6)continue;
+  items.push({y,svg:hill&&rnd()<.55?coneTree(x,y,.6+rnd()*.5):roundTree(x,y,.45+rnd()*.35,pick([C.teal,C.tealL]),C.tealD,"",0)});trees++;}
+items.sort((a,b)=>a.y-b.y);
+s+=`<g id="deco">${items.map(i=>i.svg).join("")}</g>`;
+s+=`<g id="dnames">${DIST.map(d=>`<text class="dname" x="${LBL[d.n][0]}" y="${LBL[d.n][1]}">${d.n}</text>`).join("")}</g>`;
+s+=`<g id="landmarks"></g>`;
+/* 雲（前景）、圖例、指北 */
+[[120,22,40],[420,14,55],[700,40,48]].forEach(([y,sz,dur],i)=>s+=`<g class="drift" style="animation-duration:${dur}s;animation-delay:-${i*15}s" opacity=".95"><g transform="translate(0 ${y})"><ellipse cx="0" cy="0" rx="${sz*1.8}" ry="${sz*.7}" fill="#fff"/><ellipse cx="${sz*.6}" cy="${-sz*.4}" rx="${sz}" ry="${sz*.7}" fill="#fff"/><rect x="${-sz*1.8}" y="${sz*.35}" width="${sz*3.4}" height="3" rx="1.5" fill="${C.sky}" opacity=".5"/></g></g>`);
+s+=`<g transform="translate(60 800)"><rect x="0" y="0" width="210" height="96" rx="16" fill="${C.white}" stroke="${C.ink}" stroke-width="3"/><text x="16" y="34" font-family="Fredoka,sans-serif" font-weight="700" font-size="24" fill="${C.ink}" letter-spacing="4">TAIPEI</text><text x="134" y="34" font-family="Huninn,Noto Sans TC,sans-serif" font-size="22" fill="${C.red}">台北</text>${MRT.map((m,i)=>`<rect x="16" y="${48+i*14}" width="22" height="6" rx="3" fill="${m.col}"/><text x="46" y="${55+i*14}" font-size="11" fill="${C.ink}" font-family="Noto Sans TC,sans-serif" font-weight="700">${m.name}</text>`).join("")}</g>`;
+s+=`<g transform="translate(940 870)"><circle r="28" fill="#fff" stroke="${C.ink}" stroke-width="3"/><path d="M0 -18 L8 6 L0 0 L-8 6Z" fill="${C.red}"/><text y="20" text-anchor="middle" font-family="Fredoka,sans-serif" font-size="12" font-weight="700" fill="${C.ink}">N</text></g>`;
+svg.innerHTML=s;
+
+/* 地標 */
+const lg=$("landmarks");
+LM.slice().sort((a,b)=>a.y-b.y).forEach(l=>{
+  const g=document.createElementNS(SVGNS,"g");
+  g.setAttribute("class","lm");g.setAttribute("transform",`translate(${l.x} ${l.y})`);g.setAttribute("tabindex","0");g.setAttribute("role","button");g.setAttribute("aria-label",l.name);
+  const tw=l.name.length*14+20;
+  g.innerHTML=`<circle class="hit" cx="0" cy="-40" r="${l.r}"/><ellipse class="ring" cx="0" cy="0" rx="${l.r+8}" ry="${(l.r+8)*.32}"/>
+   <g class="art">${ART[l.id]()}</g>
+   <rect class="lbl-bg" x="${-tw/2}" y="12" width="${tw}" height="22" rx="11"/><text class="lbl" y="28">${l.name}</text>
+   <g class="star" transform="translate(${tw/2} 13)"><circle r="10" fill="${C.red}" stroke="${C.ink}" stroke-width="2"/><text y="4.5" text-anchor="middle" font-size="12" fill="#fff" font-weight="900">✓</text></g>`;
+  g.addEventListener("click",()=>openCard(l,null));
+  g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openCard(l,null);}});
+  l.el=g;lg.appendChild(g);
+});
+
+/* ================= 聲紋試衣間人物（移植） ================= */
+const W=600,H=740,INK='#0b3b40',SKIN='#ffe1cc',HAIR='#097881',CHEEK='rgba(232,62,72,.22)';
+const PALS=[['#097881','#0aaca3','#ecf8f6','#f3e43b'],['#0093b8','#00b1e0','#ffffff','#d9ffff'],['#2b70c9','#0093b8','#f3e43b','#ffffff'],['#000000','#097881','#6de2f3','#f3e43b'],['#e83e48','#ff9600','#ffffff','#f3e43b'],['#ff9600','#f3e43b','#e83e48','#ffffff'],['#f3e43b','#82d3c6','#2b70c9','#097881'],['#ecf8f6','#c0e9e2','#097881','#e83e48'],['#2b70c9','#e83e48','#ffffff','#f3e43b'],['#000000','#2b70c9','#ff9600','#6de2f3'],['#82d3c6','#6de2f3','#000000','#2b70c9'],['#e83e48','#2b70c9','#f3e43b','#d9ffff']];
+const PI=Math.PI,S3=Math.sqrt(3)/2;
+function sqList(){const L=[];for(let n=1;n<=7;n++)for(let m=n+1;m<=8;m++)L.push([n,m]);return L.sort((a,b)=>(a[0]**2+a[1]**2)-(b[0]**2+b[1]**2)||a[0]-b[0])}
+const FAMS=[
+ {name:'方板・反相',amp:2,list:sqList(),f:(x,y,[n,m])=>Math.cos(n*PI*x)*Math.cos(m*PI*y)-Math.cos(m*PI*x)*Math.cos(n*PI*y),label:([n,m])=>`n${n}·m${m}`,tex:([n,m])=>`cos(<em>${n}</em>πx)·cos(<em>${m}</em>πy) − cos(<em>${m}</em>πx)·cos(<em>${n}</em>πy) = 0`},
+ {name:'方板・同相',amp:2,list:sqList(),f:(x,y,[n,m])=>Math.cos(n*PI*x)*Math.cos(m*PI*y)+Math.cos(m*PI*x)*Math.cos(n*PI*y),label:([n,m])=>`n${n}·m${m}`,tex:([n,m])=>`cos(<em>${n}</em>πx)·cos(<em>${m}</em>πy) + cos(<em>${m}</em>πx)·cos(<em>${n}</em>πy) = 0`},
+ {name:'圓板',amp:1,list:(()=>{const L=[];for(let k=1;k<=5;k++)for(let n=0;n<=7;n++)L.push([n,k]);return L.sort((a,b)=>(a[1]+a[0]*.45)-(b[1]+b[0]*.45))})(),f:(x,y,[n,k])=>Math.cos(k*PI*Math.sqrt(x*x+y*y))*Math.cos(n*Math.atan2(x,y)),label:([n,k])=>`n${n}·k${k}`,tex:([n,k])=>`cos(<em>${k}</em>π·r) · cos(<em>${n}</em>θ) = 0`},
+ {name:'六角板',amp:3,list:Array.from({length:22},(_,i)=>+(1.2+i*.35).toFixed(2)),f:(x,y,q)=>{const k=q*PI;return Math.cos(k*y)+Math.cos(k*(S3*x-.5*y))+Math.cos(k*(-S3*x-.5*y))},label:q=>`q ${q}`,tex:q=>`cos(<em>${q}</em>π·u₁) + cos(<em>${q}</em>π·u₂) + cos(<em>${q}</em>π·u₃) = 0`},
+ {name:'雙波源',amp:2,list:Array.from({length:24},(_,i)=>+(2+i*.5).toFixed(1)),f:(x,y,k)=>Math.cos(k*PI*Math.hypot(x-.5,y+.2))+Math.cos(k*PI*Math.hypot(x+.5,y+.2)),label:k=>`k ${k}`,tex:k=>`cos(<em>${k}</em>π·d₁) + cos(<em>${k}</em>π·d₂) = 0`}
+];
+function makeSim(N){const s={N,fi:0,p:[1,2],px:new Float32Array(N),py:new Float32Array(N),sg:new Uint8Array(N)};for(let i=0;i<N;i++){s.px[i]=Math.random()*2-1;s.py[i]=Math.random()*2-1}return s}
+function stepSim(s,ag){const F=FAMS[s.fi],fn=F.f,p=s.p,inv=1/F.amp,px=s.px,py=s.py,sg=s.sg;
+  for(let i=0;i<s.N;i++){let x=px[i],y=py[i];const f=fn(x,y,p)*inv;sg[i]=f>0?1:0;const st=ag*(.003+.15*Math.abs(f));
+    x+=(Math.random()*2-1)*st;y+=(Math.random()*2-1)*st;if(x<-1)x=-2-x;else if(x>1)x=2-x;if(y<-1)y=-2-y;else if(y>1)y=2-y;px[i]=x;py[i]=y}}
+function settle(s,iters=300){for(let k=0;k<iters;k++)stepSim(s,k<220?1:1-(k-220)/80)}
+function garment(g){const p=new Path2D();
+  if(g==='girl'){p.moveTo(256,300);p.lineTo(214,313);p.lineTo(180,372);p.lineTo(220,390);p.lineTo(234,366);p.lineTo(230,432);p.lineTo(180,602);p.quadraticCurveTo(300,632,420,602);p.lineTo(370,432);p.lineTo(366,366);p.lineTo(380,390);p.lineTo(420,372);p.lineTo(386,313);p.lineTo(344,300);p.quadraticCurveTo(300,332,256,300);p.closePath();}
+  else{p.moveTo(256,300);p.lineTo(210,313);p.lineTo(170,376);p.lineTo(212,396);p.lineTo(230,370);p.lineTo(232,500);p.quadraticCurveTo(300,514,368,500);p.lineTo(370,370);p.lineTo(388,396);p.lineTo(430,376);p.lineTo(390,313);p.lineTo(344,300);p.quadraticCurveTo(300,326,256,300);p.closePath();}
+  return p}
+const BOX={girl:{x0:178,x1:422,y0:298,y1:625},boy:{x0:168,x1:432,y0:298,y1:512}};
+const GPATH={girl:garment('girl'),boy:garment('boy')};
+const SHORTS=(()=>{const p=new Path2D();p.moveTo(238,490);p.lineTo(362,490);p.lineTo(370,578);p.lineTo(308,578);p.lineTo(300,546);p.lineTo(292,578);p.lineTo(230,578);p.closePath();return p})();
+function drawChar(ctx,g,sim,col,step=0,psz=2.2){
+  ctx.lineJoin='round';ctx.lineCap='round';
+  const limb=(x1,y1,x2,y2,w)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=INK;ctx.lineWidth=w+9;ctx.stroke();ctx.strokeStyle=SKIN;ctx.lineWidth=w;ctx.stroke()};
+  if(g==='girl'){ctx.beginPath();ctx.roundRect(176,138,248,206,[100,100,46,46]);ctx.fillStyle=HAIR;ctx.fill();ctx.strokeStyle=INK;ctx.lineWidth=5;ctx.stroke()}
+  const ly=g==='boy'?560:592,sw=step*20,lift=k=>Math.max(0,k)*14;
+  const lx=270-sw,rx=330+sw,ly1=688-lift(-step),ry1=688-lift(step);
+  limb(272,ly,lx,ly1,30);limb(328,ly,rx,ry1,30);
+  ctx.fillStyle=g==='boy'?'#ff9600':'#e83e48';ctx.strokeStyle=INK;ctx.lineWidth=5;
+  for(const[x,y]of[[lx-8,ly1+12],[rx+8,ry1+12]]){ctx.beginPath();ctx.ellipse(x,y,28,15,0,0,Math.PI*2);ctx.fill();ctx.stroke()}
+  const a=step*16;
+  if(g==='girl'){limb(202,380,180+a,468,28);limb(398,380,420-a,468,28)}else{limb(193,386,174+a,478,28);limb(407,386,426-a,478,28)}
+  if(g==='boy'){ctx.fillStyle='#2b70c9';ctx.fill(SHORTS);ctx.strokeStyle=INK;ctx.lineWidth=5;ctx.stroke(SHORTS)}
+  ctx.fillStyle=SKIN;ctx.fillRect(282,270,36,44);ctx.lineWidth=4;ctx.strokeStyle=INK;ctx.strokeRect(282,270,36,44);
+  const gp=GPATH[g],b=BOX[g];const gr=ctx.createLinearGradient(0,b.y0,0,b.y1);gr.addColorStop(0,col[0]);gr.addColorStop(1,col[1]);ctx.fillStyle=gr;ctx.fill(gp);
+  ctx.save();ctx.clip(gp);const cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2,half=Math.max(b.x1-b.x0,b.y1-b.y0)/2;
+  for(const side of[0,1]){ctx.fillStyle=col[2+side];ctx.beginPath();for(let i=0;i<sim.N;i++)if(sim.sg[i]===side)ctx.rect(cx+sim.px[i]*half-psz/2,cy+sim.py[i]*half-psz/2,psz,psz);ctx.fill()}
+  ctx.restore();ctx.strokeStyle=INK;ctx.lineWidth=6;ctx.stroke(gp);
+  ctx.beginPath();ctx.ellipse(300,192,108,100,0,0,Math.PI*2);ctx.fillStyle=SKIN;ctx.fill();ctx.lineWidth=5;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(190,206);ctx.bezierCurveTo(176,46,424,46,410,206);ctx.quadraticCurveTo(358,196,303,124);ctx.lineTo(297,124);ctx.quadraticCurveTo(242,196,190,206);ctx.closePath();ctx.fillStyle=HAIR;ctx.fill();ctx.stroke();
+  ctx.save();ctx.translate(g==='girl'?370:232,g==='girl'?122:120);ctx.rotate(g==='girl'?.35:-.35);ctx.font='700 46px Fredoka, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=7;ctx.strokeStyle=INK;ctx.strokeText('π',0,0);ctx.fillStyle='#f3e43b';ctx.fillText('π',0,0);ctx.restore();
+  for(const x of[262,338]){ctx.beginPath();ctx.ellipse(x,214,13,18,0,0,Math.PI*2);ctx.fillStyle=INK;ctx.fill();ctx.beginPath();ctx.arc(x+4,207,4.5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill()}
+  ctx.fillStyle=CHEEK;for(const x of[232,368]){ctx.beginPath();ctx.ellipse(x,240,15,9,0,0,Math.PI*2);ctx.fill()}
+  ctx.strokeStyle=INK;ctx.lineWidth=5;ctx.beginPath();ctx.arc(300,240,14,.15*Math.PI,.85*Math.PI);ctx.stroke();
+}
+
+/* ================= NUMINA 小隊 ================= */
+const CHARS=[
+ {id:"numina",name:"NUMINA",color:C.teal,dark:C.tealD,sym:"π",vw:100,vh:120,mapW:6,trayH:84,hi:["這裡藏著好多數字！","我來算算看～","π 感應啟動！"]},
+ {id:"numi",name:"NUMI",color:C.sky,dark:C.skyD,sym:"+",vw:100,vh:120,mapW:3.2,trayH:40,hi:["我也要看！","哇～好高！","加加加！"]},
+ {id:"numnum",name:"NUMNUM",color:C.orange,dark:C.orangeD,sym:"×",vw:300,vh:120,mapW:11,trayH:52,hi:["肚子好餓，先吃再算！","乘起來一定很大！","我來了～咚咚咚"]},
+ {id:"anu",name:"ANU",color:C.red,dark:C.redD,sym:"−",vw:100,vh:120,mapW:4.6,trayH:66,hi:["減掉多餘的，答案就出來了","我來找線索！","出發探險！"]},
+ {id:"ana",name:"ANA",color:C.yellow,dark:C.yellowD,sym:"÷",vw:100,vh:120,mapW:4.6,trayH:66,hi:["平分給大家！","這裡好漂亮～","我發現一個規律！"]}
+];
+function charSVG(c,face){const w=c.vw,h=c.vh,ex1=w*0.36,ex2=w*0.64,ey=h*0.56,er=Math.min(13,w*0.13);
+  const mouth=face==="wow"?`<ellipse cx="${w/2}" cy="${h*0.76}" rx="6" ry="7" fill="${C.ink}"/>`:`<path d="M${w/2-9} ${h*0.73} Q${w/2} ${h*0.83} ${w/2+9} ${h*0.73}" stroke="${C.ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" aria-hidden="true"><rect x="5" y="30" width="${w-10}" height="${h-34}" rx="${Math.min(40,(h-34)/2)}" fill="${c.color}" stroke="${C.ink}" stroke-width="4"/><text x="${w/2}" y="40" text-anchor="middle" font-family="Fredoka,Huninn,sans-serif" font-size="44" font-weight="700" fill="${c.dark}" stroke="${C.ink}" stroke-width="2" paint-order="stroke">${c.sym}</text><circle cx="${ex1}" cy="${ey}" r="${er}" fill="#fff"/><circle cx="${ex2}" cy="${ey}" r="${er}" fill="#fff"/><circle cx="${ex1+2}" cy="${ey+1}" r="${er*0.5}" fill="${C.ink}"/><circle cx="${ex2+2}" cy="${ey+1}" r="${er*0.5}" fill="${C.ink}"/>${mouth}<ellipse cx="${w*0.24}" cy="${h*0.72}" rx="6" ry="3.5" fill="#fff" opacity=".45"/><ellipse cx="${w*0.76}" cy="${h*0.72}" rx="6" ry="3.5" fill="#fff" opacity=".45"/></svg>`;}
+
+let state={stamps:{},pos:{}};
+try{const v=localStorage.getItem("numina-taipei-v2");if(v)state=Object.assign(state,JSON.parse(v));}catch(e){}
+if(window.claude?.hot?.data?.state)state=window.claude.hot.data.state;
+window.claude?.hot?.snapshot?.(()=>({state}));
+function save(){try{localStorage.setItem("numina-taipei-v2",JSON.stringify(state));}catch(e){}}
+
+const tray=$("tray"),overlay=$("overlay"),mapbox=$("mapbox");
+const slots={};
+CHARS.forEach(c=>{const slot=document.createElement("div");slot.className="slot";slot.innerHTML=`<div class="holder"></div><div class="nm">${c.name}</div>`;tray.appendChild(slot);slots[c.id]=slot;
+  const el=document.createElement("div");el.className="chr";el.tabIndex=0;el.setAttribute("role","button");el.setAttribute("aria-label",`${c.name}，拖曳到地標`);el.innerHTML=charSVG(c);c.el=el;
+  el.addEventListener("pointerdown",e=>startDrag(e,c));
+  el.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();const free=LM.filter(l=>!state.stamps[l.id]);const l=pick(free.length?free:LM);placeAt(c,l.x,l.y-30);}});
+  if(state.pos[c.id])putOnMap(c,state.pos[c.id].x,state.pos[c.id].y);else toTray(c);});
+function sizeInTray(c){c.el.style.width="";c.el.style.height=c.trayH+"px";const v=c.el.querySelector("svg");v.style.height="100%";v.style.width="auto";}
+function sizeOnMap(c){c.el.style.height="";c.el.style.width=c.mapW+"%";const v=c.el.querySelector("svg");v.style.height="auto";v.style.width="100%";}
+function toTray(c){delete state.pos[c.id];c.el.classList.remove("placed","drag");c.el.style.left=c.el.style.top="";sizeInTray(c);slots[c.id].querySelector(".holder").appendChild(c.el);slots[c.id].classList.remove("out");}
+function putOnMap(c,x,y){sizeOnMap(c);overlay.appendChild(c.el);c.el.style.left=(x/VW*100)+"%";c.el.style.top=(y/VH*100)+"%";slots[c.id].classList.add("out");}
+let drag=null;
+function svgPoint(cx,cy){const r=mapbox.getBoundingClientRect();return{x:(cx-r.left)/r.width*VW,y:(cy-r.top)/r.height*VH,inside:cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom};}
+function nearest(x,y){let best=null,bd=1e9;LM.forEach(l=>{const d=Math.hypot(l.x-x,(l.y-35)-y)/l.r;if(d<bd){bd=d;best=l;}});return bd<1.25?best:null;}
+function startDrag(e,c){if(e.button!==undefined&&e.button!==0)return;e.preventDefault();const el=c.el;const mw=mapbox.getBoundingClientRect().width*c.mapW/100;
+  document.body.appendChild(el);el.classList.remove("placed");el.classList.add("drag");el.style.height="";el.style.width=Math.max(mw,40)+"px";const v=el.querySelector("svg");v.style.width="100%";v.style.height="auto";
+  el.style.left=e.clientX+"px";el.style.top=e.clientY+"px";el.querySelector(".bubble")?.remove();drag={c};try{el.setPointerCapture(e.pointerId);}catch(_){}
+  el.addEventListener("pointermove",onMove);el.addEventListener("pointerup",onUp);el.addEventListener("pointercancel",onUp);}
+function onMove(e){if(!drag)return;const el=drag.c.el;el.style.left=e.clientX+"px";el.style.top=e.clientY+"px";const p=svgPoint(e.clientX,e.clientY);const n=p.inside?nearest(p.x,p.y):null;LM.forEach(l=>l.el.classList.toggle("near",l===n));}
+function onUp(e){if(!drag)return;const c=drag.c,el=c.el;el.removeEventListener("pointermove",onMove);el.removeEventListener("pointerup",onUp);el.removeEventListener("pointercancel",onUp);
+  LM.forEach(l=>l.el.classList.remove("near"));el.classList.remove("drag");drag=null;const p=svgPoint(e.clientX,e.clientY);
+  if(!p.inside){toTray(c);save();return;}placeAt(c,p.x,p.y);}
+function placeAt(c,x,y){const l=nearest(x,y);
+  if(l){const others=CHARS.filter(o=>o!==c&&state.pos[o.id]?.at===l.id).length;x=l.x+[-1,1,-1.4,1.4][others%4]*(l.r*.85);y=l.y+18;}
+  else y+=20;
+  x=Math.max(30,Math.min(970,x));y=Math.max(60,Math.min(930,y));state.pos[c.id]={x,y,at:l?l.id:null};save();
+  putOnMap(c,x,y);void c.el.offsetWidth;c.el.classList.add("placed");
+  if(l){activate(l);openCard(l,c);}else say(c.el,"這裡是"+districtAt(x,y)+"！");}
+function districtAt(x,y){for(const d of DIST)if(inPoly(x,y,d.pts))return d.n;return "台北";}
+function say(el,t,ms=2600){el.querySelector(".bubble")?.remove();const b=document.createElement("div");b.className="bubble";b.textContent=t;el.appendChild(b);setTimeout(()=>b.remove(),ms);}
+function activate(l){l.el.classList.remove("active");void l.el.getBoundingClientRect();l.el.classList.add("active");setTimeout(()=>l.el.classList.remove("active"),2600);}
+
+/* ================= 卡片 ================= */
+let sheet=null;
+function closeCard(){sheet?.remove();sheet=null;}
+function openCard(l,c){closeCard();
+  const who=c||CHARS.find(o=>state.pos[o.id]?.at===l.id)||CHARS[0];const line=pick(who.hi);if(c)say(c.el,line);activate(l);
+  const done=!!state.stamps[l.id];
+  sheet=document.createElement("div");sheet.className="sheet";sheet.setAttribute("role","dialog");sheet.setAttribute("aria-label",l.name);
+  sheet.innerHTML=`<button class="close" aria-label="關閉">×</button><div class="top"><div class="face">${charSVG(who,"wow")}</div><div><span class="tag">${l.d}</span><h3>${l.name}</h3></div></div>
+   <div class="say">${who.name}：${line}</div><p class="fact">${l.fact}</p>
+   <div class="quiz"><p class="q">${done?"✓ 已經蓋過章了！再挑戰一次：":"數感挑戰："}${l.q}</p><div class="opts">${l.opts.map((o,i)=>`<button class="opt" data-i="${i}">${o}</button>`).join("")}</div><p class="result" aria-live="polite"></p></div>`;
+  document.body.appendChild(sheet);sheet.querySelector(".close").onclick=closeCard;
+  const res=sheet.querySelector(".result");let tries=0;
+  sheet.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;
+    if(i===l.a){sheet.querySelectorAll(".opt").forEach(x=>x.disabled=true);b.classList.add("right");res.className="result ok";res.innerHTML="答對了！"+l.why;
+      if(!state.stamps[l.id]){state.stamps[l.id]=1;save();renderPassport(l.id);confetti();toast(`蓋章成功：${l.name}`);if(Object.keys(state.stamps).length===LM.length)setTimeout(()=>toast("集滿 12 個章！你是台北數感大師"),900);}
+      CHARS.filter(o=>state.pos[o.id]?.at===l.id).forEach(o=>say(o.el,"太棒了！"));
+      walkers.filter(w=>Math.hypot(w.x-l.x,w.y-l.y)<l.r*1.6).forEach(w=>say(w.el,"好厲害！"));}
+    else{tries++;b.classList.add("wrong");b.disabled=true;res.className="result no";res.textContent=tries>1?`${who.name} 提示：${l.why.split("，")[0]}…`:`${who.name}：再想一下，你可以的！`;}});
+  sheet.querySelector(".opt").focus({preventScroll:true});}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeCard();});
+
+const pp=$("passport");
+function renderPassport(newId){pp.innerHTML="";LM.forEach(l=>{const b=document.createElement("button");const got=!!state.stamps[l.id];
+  b.className="stamp"+(got?" got":"")+(l.id===newId?" new":"");b.textContent=got?l.name:l.d;b.title=l.name;b.onclick=()=>openCard(l,null);pp.appendChild(b);l.el.classList.toggle("done",got);});
+  $("scoreN").textContent=Object.keys(state.stamps).length;}
+renderPassport();
+
+$("homeBtn").onclick=()=>{closeCard();CHARS.forEach(toTray);save();};
+$("resetBtn").onclick=function(){if(this.dataset.armed){state.stamps={};save();renderPassport();this.textContent="清空護照";delete this.dataset.armed;toast("護照已清空");}
+  else{this.dataset.armed=1;this.textContent="再按一次確認清空";setTimeout(()=>{if(this.dataset.armed){delete this.dataset.armed;this.textContent="清空護照";}},3000);}};
+$("tourBtn").onclick=()=>{closeCard();const free=LM.filter(l=>!state.stamps[l.id]);const pool=(free.length?free:LM).slice().sort(()=>Math.random()-.5);
+  CHARS.forEach(c=>delete state.pos[c.id]);
+  CHARS.forEach((c,i)=>{const l=pool[i%pool.length];const others=CHARS.filter(o=>o!==c&&state.pos[o.id]?.at===l.id).length;
+    const x=Math.max(30,Math.min(970,l.x+[-1,1,-1.4,1.4][others%4]*l.r*.85)),y=l.y+18;state.pos[c.id]={x,y,at:l.id};
+    setTimeout(()=>{putOnMap(c,x,y);c.el.classList.remove("placed");void c.el.offsetWidth;c.el.classList.add("placed");say(c.el,c.hi[0]);activate(l);},i*180);});
+  save();toast("小隊出發！點地標或拖曳角色開始挑戰");};
+function toast(t){const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200);}
+function confetti(){const cols=[C.teal,C.sky,C.red,C.orange,C.yellow,C.blue];for(let i=0;i<40;i++){const p=document.createElement("div");p.className="confetti";p.style.left=(10+Math.random()*80)+"vw";p.style.top="-20px";p.style.background=cols[i%cols.length];p.style.setProperty("--dx",(Math.random()*200-100)+"px");p.style.animationDelay=(Math.random()*.3)+"s";document.body.appendChild(p);setTimeout(()=>p.remove(),1900);}}
+
+if(!Object.keys(state.pos).length){const n=CHARS[0],l=LM[0];const x=l.x-l.r*.85,y=l.y+18;state.pos[n.id]={x,y,at:l.id};putOnMap(n,x,y);setTimeout(()=>say(n.el,"把大家拖到地標上吧！"),600);}
+
+/* ================= 走動的聲紋遊客 ================= */
+const ROUTES=[...MRT.map(m=>m.pts),...TRAILS];
+function routeInfo(pts){const seg=[];let L=0;for(let i=0;i<pts.length-1;i++){const l=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]);seg.push(l);L+=l;}return{pts,seg,L};}
+const RI=ROUTES.map(routeInfo);
+function at(ri,d){let i=0;while(i<ri.seg.length-1&&d>ri.seg[i]){d-=ri.seg[i];i++;}const t=Math.min(1,d/ri.seg[i]),a=ri.pts[i],b=ri.pts[i+1];return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,b[0]-a[0]];}
+const FW=180,FH=222,SC=.3;
+function makePerson(){const g=Math.random()<.5?'boy':'girl',fi=Math.floor(Math.random()*FAMS.length),F=FAMS[fi],t=Math.random();
+  const idx=Math.round(t*(F.list.length-1)),p=F.list[idx],col=PALS[(fi*5+Math.floor(t*.999*6))%PALS.length];
+  const sim=makeSim(4200);sim.fi=fi;sim.p=p;settle(sim,260);
+  const cv=document.createElement("canvas");cv.width=FW*4;cv.height=FH;const x=cv.getContext("2d");
+  [-1,0,1,0].forEach((st,i)=>{x.save();x.translate(i*FW,0);x.scale(SC,SC);drawChar(x,g,sim,col,st,7);x.restore();});
+  return{g,fi,p,col,sprite:cv.toDataURL("image/png"),thumb:cv};}
+const walkers=[];const visList=$("visList");
+const names=["小宇","阿芃","小晴","阿哲","米米","小安","大寶","阿綺","小樂","可可","阿傑","圓圓"];
+function addWalker(){if(walkers.length>=12){toast("地圖上已經有 12 位遊客了");return;}
+  const per=makePerson(),ri=RI[Math.floor(Math.random()*RI.length)];
+  const w={...per,ri,d:Math.random()*ri.L,dir:Math.random()<.5?1:-1,speed:22+Math.random()*14,pause:0,last:null,name:names[walkers.length%names.length]};
+  const el=document.createElement("div");el.className="walker walk";el.tabIndex=0;el.setAttribute("role","button");el.setAttribute("aria-label",`遊客 ${w.name}`);
+  el.style.backgroundImage=`url(${per.sprite})`;w.el=el;overlay.appendChild(el);
+  el.onclick=()=>openWalker(w);el.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openWalker(w);}};
+  const b=document.createElement("button");b.setAttribute("aria-label",`查看遊客 ${w.name}`);const tc=document.createElement("canvas");tc.width=FW;tc.height=FH;tc.getContext("2d").drawImage(per.thumb,FW,0,FW,FH,0,0,FW,FH);b.appendChild(tc);b.onclick=()=>openWalker(w);visList.appendChild(b);
+  walkers.push(w);place(w);}
+function place(w){const[x,y,dx]=at(w.ri,w.d);w.x=x;w.y=y;w.el.style.left=(x/VW*100)+"%";w.el.style.top=(y/VH*100)+"%";w.el.style.zIndex=Math.round(y/10);
+  if(dx*w.dir<-.5)w.el.classList.add("flip");else if(dx*w.dir>.5)w.el.classList.remove("flip");}
+function openWalker(w){closeCard();
+  const F=FAMS[w.fi];sheet=document.createElement("div");sheet.className="sheet";sheet.setAttribute("role","dialog");
+  const near=LM.slice().sort((a,b)=>Math.hypot(a.x-w.x,a.y-w.y)-Math.hypot(b.x-w.x,b.y-w.y))[0];
+  sheet.innerHTML=`<button class="close" aria-label="關閉">×</button><div class="big"><canvas width="${W}" height="${H}"></canvas><div><span class="tag">聲紋遊客</span><h3>${w.name}</h3><p class="fact" style="margin-top:6px">衣服是 <b>${F.name} · ${F.label(w.p)}</b> 的克拉尼圖形，沙子停在式子等於 0 的節線上。</p></div></div>
+   <div class="formula">${F.tex(w.p)}</div><div class="say">${w.name}：我正在${districtAt(w.x,w.y)}散步，離${near.name}很近喔！</div>`;
+  document.body.appendChild(sheet);sheet.querySelector(".close").onclick=closeCard;
+  const cv=sheet.querySelector("canvas"),ctx=cv.getContext("2d");
+  const sim=makeSim(12000);sim.fi=w.fi;sim.p=w.p;settle(sim,280);drawChar(ctx,w.g,sim,w.col,0,2.6);
+  say(w.el,"嗨！我是"+w.name);w.pause=Math.max(w.pause,2500);}
+$("addWalker").onclick=()=>{addWalker();const w=walkers[walkers.length-1];if(w)say(w.el,"我也來逛台北！");};
+
+let lastTs=0;const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function loop(ts){const dt=lastTs?Math.min(100,ts-lastTs):16;lastTs=ts;
+  for(const w of walkers){
+    if(w.pause>0){w.pause-=dt;if(w.pause<=0)w.el.classList.add("walk");continue;}
+    w.d+=w.dir*w.speed*dt/1000;
+    if(w.d>=w.ri.L||w.d<=0){w.d=Math.max(0,Math.min(w.ri.L,w.d));
+      if(Math.random()<.5){w.dir*=-1;}else{const end=at(w.ri,w.d);const alt=RI.filter(r=>r!==w.ri).map(r=>{let best=1e9,bd=0;for(let k=0;k<=r.L;k+=10){const q=at(r,k);const dd=Math.hypot(q[0]-end[0],q[1]-end[1]);if(dd<best){best=dd;bd=k;}}return{r,best,bd};}).filter(o=>o.best<40);
+        if(alt.length){const o=pick(alt);w.ri=o.r;w.d=o.bd;w.dir=o.bd<o.r.L/2?1:-1;}else w.dir*=-1;}}
+    place(w);
+    const l=LM.find(m=>Math.hypot(m.x-w.x,(m.y-10)-w.y)<m.r*.9);
+    if(l&&w.last!==l.id){w.last=l.id;w.pause=1800;w.el.classList.remove("walk");say(w.el,pick(["哇！","好漂亮！","拍照！","原來這裡是"])+l.name.replace(/^/,""),1800);}
+  }
+  requestAnimationFrame(loop);}
+try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1500))]);}catch(e){}
+for(let i=0;i<8;i++){addWalker();await new Promise(r=>setTimeout(r,0));}
+if(!reduce)requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>

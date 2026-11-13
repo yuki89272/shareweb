@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NUMINA 數感遊戲場</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 數感品牌色：青綠主色 + 天藍 / 橘 / 藍 三款遊戲各一色 */
+:root {
+  --bg: #ECF8F6;
+  --surface: #FFFFFF;
+  --ink: #0B3B40;
+  --muted: #3F6F72;
+  --line: #C0E9E2;
+  --dot: #C0E9E2;
+  --band: #097881;
+  --band-ink: #FFFFFF;
+  --c1: #00B1E0; --c1-soft: #D9FFFF;
+  --c2: #FF9600; --c2-soft: #FFF0DA;
+  --c3: #2B70C9; --c3-soft: #E1ECFA;
+  --font-display: 'Chiron GoRound TC', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  --font-body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1D1D; --surface: #152828; --ink: #E8F3F1; --muted: #A9BDBA; --line: #24403F; --dot: #1E3433;
+    --band: #06565C; --band-ink: #ECF8F6;
+    --c1: #6DE2F3; --c1-soft: #12363D;
+    --c2: #FFB547; --c2-soft: #3A2A12;
+    --c3: #7FAEF0; --c3-soft: #1B2A40;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1D1D; --surface: #152828; --ink: #E8F3F1; --muted: #A9BDBA; --line: #24403F; --dot: #1E3433;
+  --band: #06565C; --band-ink: #ECF8F6;
+  --c1: #6DE2F3; --c1-soft: #12363D;
+  --c2: #FFB547; --c2-soft: #3A2A12;
+  --c3: #7FAEF0; --c3-soft: #1B2A40;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1.6px, transparent 1.6px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+header { background: var(--band); color: var(--band-ink); position: relative; overflow: hidden; }
+header .wrap { padding-block: 52px 56px; display: grid; gap: 8px; position: relative; }
+.eyebrow { font-family: var(--font-display); font-weight: 600; font-size: .85rem; letter-spacing: .14em; opacity: .85; }
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  line-height: 1.2;
+}
+header p { margin: 0; max-width: 32em; opacity: .9; }
+.shapes { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: 220px; height: 160px; opacity: .9; }
+@media (max-width: 720px) { .shapes { display: none; } }
+
+main .wrap { padding-block: 36px 56px; }
+.games {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+@media (max-width: 860px) { .games { grid-template-columns: 1fr; } }
+
+.game {
+  --c: var(--c1); --soft: var(--c1-soft);
+  display: flex; flex-direction: column; gap: 14px;
+  height: 100%;
+  padding: 24px 22px 22px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 20px;
+  color: inherit; text-decoration: none;
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+.game.g2 { --c: var(--c2); --soft: var(--c2-soft); }
+.game.g3 { --c: var(--c3); --soft: var(--c3-soft); }
+.game:hover { border-color: var(--c); transform: translateY(-4px); box-shadow: 0 10px 0 -4px var(--c); }
+.game:focus-visible { outline: 3px solid var(--c); outline-offset: 3px; }
+
+.badge {
+  width: 64px; height: 64px; border-radius: 18px;
+  background: var(--soft); color: var(--c);
+  display: grid; place-items: center;
+}
+.badge svg { width: 34px; height: 34px; }
+.num { font-family: var(--font-display); font-weight: 800; font-size: .8rem; letter-spacing: .1em; color: var(--c); }
+.name { margin: -8px 0 0; font-family: var(--font-display); font-weight: 800; font-size: 1.45rem; line-height: 1.3; }
+.desc { margin: 0; color: var(--muted); font-size: .95rem; flex: 1; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: .78rem; padding: 2px 10px; border-radius: 999px; background: var(--soft); color: var(--ink); }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 4px; padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--c); color: #fff;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.05rem;
+}
+:root[data-theme="dark"] .btn { color: #0E1D1D; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn { color: #0E1D1D; } }
+.btn span { transition: transform .15s; }
+.game:hover .btn span { transform: translateX(4px); }
+
+footer .wrap { padding-block: 0 32px; font-size: .85rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .game, .btn span { transition: none; }
+  .game:hover, .game:hover .btn span { transform: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">NUMINA 數感實驗室</div>
+    <h1>數感遊戲場</h1>
+    <p>用地圖、聲音和拼圖玩數學。挑一個遊戲，開始探索身邊的數感！</p>
+    <svg class="shapes" viewBox="0 0 220 160" aria-hidden="true">
+      <circle cx="50" cy="60" r="34" fill="#6DE2F3"/>
+      <polygon points="140,20 190,100 90,100" fill="#FF9600"/>
+      <rect x="120" y="108" width="44" height="44" rx="8" fill="#82D3C6"/>
+      <rect x="20" y="118" width="84" height="18" rx="9" fill="#F3E43B"/>
+    </svg>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <ul class="games">
+      <li>
+        <a class="game g1" href="game/台北數感地圖.html">
+          <span class="badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>
+          </span>
+          <span class="num">GAME 01</span>
+          <h2 class="name">台北數感地圖</h2>
+          <p class="desc">地標會動、遊客會逛街。把數感角色拖到地標上，答對數學題就能在護照上蓋章！</p>
+          <span class="tags"><span class="tag">數學題</span><span class="tag">集章</span></span>
+          <span class="btn">開始遊戲 <span aria-hidden="true">→</span></span>
+        </a>
+      </li>
+      <li>
+        <a class="game g2" href="game/聲紋試衣間.html">
+          <span class="badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0"/></svg>
+          </span>
+          <span class="num">GAME 02</span>
+          <h2 class="name">聲紋試衣間</h2>
+          <p class="desc">對著麥克風發出聲音，聲波會在衣服上排出克拉尼圖形，幫模特兒換上專屬花紋。</p>
+          <span class="tags"><span class="tag">需要麥克風</span><span class="tag">聲波</span></span>
+          <span class="btn">開始遊戲 <span aria-hidden="true">→</span></span>
+        </a>
+      </li>
+      <li>
+        <a class="game g3" href="game/音樂拼圖樂團.html">
+          <span class="badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17" r="3"/><path d="M10 17V5l10-2v12"/><circle cx="17" cy="15" r="3"/></svg>
+          </span>
+          <span class="num">GAME 03</span>
+          <h2 class="name">音樂拼圖樂團</h2>
+          <p class="desc">用紙剪出圓形、三角形、方塊、長條，拼成樂器給攝影機看，樂器就會開始演奏！</p>
+          <span class="tags"><span class="tag">需要攝影機</span><span class="tag">幾何圖形</span></span>
+          <span class="btn">開始遊戲 <span aria-hidden="true">→</span></span>
+        </a>
+      </li>
+    </ul>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">聲紋試衣間與音樂拼圖樂團需要允許瀏覽器使用麥克風／攝影機。</div>
+</footer>
+
+</body>
+</html>
