@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NUMINA 畫聲掃描機</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#ecf8f6; --panel:#ffffff; --ink:#0b3b40; --muted:#3f6a6d; --line:#c0e9e2;
+  --teal:#0aaca3; --teal-d:#097881; --teal-m:#82d3c6; --cyan:#00b1e0;
+  --orange:#ff9600; --red:#e83e48; --blue:#2b70c9; --yellow:#f3e43b;
+  --chip:#f4fbfa; --shade:rgba(9,120,129,.16); --stage:#d6ecea;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#062b2e; --panel:#0c3b3f; --ink:#e7f7f5; --muted:#9dc7c3; --line:#1f5c5f;
+    --teal:#2ec4b9; --teal-d:#82d3c6; --teal-m:#3f9f98; --chip:#0f4549; --shade:rgba(0,0,0,.35); --stage:#0a3235;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#062b2e; --panel:#0c3b3f; --ink:#e7f7f5; --muted:#9dc7c3; --line:#1f5c5f;
+  --teal:#2ec4b9; --teal-d:#82d3c6; --teal-m:#3f9f98; --chip:#0f4549; --shade:rgba(0,0,0,.35); --stage:#0a3235;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei","Heiti TC",system-ui,sans-serif;
+  font-weight:500;line-height:1.6;-webkit-font-smoothing:antialiased}
+.latin{font-family:"Fredoka","Noto Sans TC",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* header */
+header{max-width:1120px;margin:0 auto;padding:18px 20px 6px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;flex:1 1 320px;min-width:0}
+.brand svg{width:56px;height:56px;flex:none}
+.brand h1{margin:0;font-size:clamp(22px,3.2vw,30px);line-height:1.15;font-weight:900;letter-spacing:.02em}
+.brand h1 .latin{font-weight:700;color:var(--teal);letter-spacing:.04em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.stepper{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.stepper li button{display:flex;align-items:center;gap:6px;border:0;background:transparent;padding:6px 10px;border-radius:999px;color:var(--muted);font-size:14px;cursor:pointer}
+.stepper li button:disabled{cursor:default;opacity:.55}
+.stepper .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line);font-family:"Fredoka",sans-serif;font-weight:600;font-size:13px}
+.stepper [aria-current="step"]{background:var(--panel);color:var(--ink);box-shadow:0 2px 0 var(--line)}
+.stepper [aria-current="step"] .n{background:var(--teal);border-color:var(--teal);color:#fff}
+
+main{max-width:1120px;margin:0 auto;padding:10px 20px 40px}
+.panel{background:var(--panel);border-radius:28px;padding:22px;box-shadow:0 4px 0 var(--line)}
+h2{margin:0 0 4px;font-size:22px;font-weight:900}
+.lead{margin:0 0 16px;color:var(--muted);max-width:62ch}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:11px 20px;font-size:16px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff;box-shadow:0 4px 0 var(--teal-d);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--teal-d)}
+.btn.soft{background:var(--chip);color:var(--ink);box-shadow:0 4px 0 var(--line)}
+.btn.warm{background:var(--orange);box-shadow:0 4px 0 #b86c00}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn svg{width:20px;height:20px;flex:none}
+.linkish{border:0;background:none;color:var(--teal-d);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px;font-weight:700}
+
+/* step 1 */
+.scanzone{position:relative;border:3px dashed var(--teal-m);border-radius:24px;padding:28px 20px 22px;text-align:center;
+  background:repeating-linear-gradient(0deg,transparent 0 23px,var(--shade) 23px 24px),var(--chip);overflow:hidden}
+.scanzone.drag{border-color:var(--orange)}
+.scanzone .beam{position:absolute;top:0;bottom:0;width:6px;left:0;background:var(--teal);opacity:.35;box-shadow:0 0 22px 8px var(--teal);animation:beam 4.5s linear infinite;pointer-events:none}
+@keyframes beam{from{left:-2%}to{left:102%}}
+.scanzone h3{margin:6px 0 4px;font-size:24px;font-weight:900}
+.scanzone p{margin:0 auto 18px;color:var(--muted);max-width:44ch}
+.scanzone .actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.scanzone .btn{font-size:18px;padding:14px 26px}
+.lineup{display:flex;align-items:flex-end;justify-content:center;gap:clamp(6px,2vw,22px);margin:18px 0 0}
+.lineup svg{width:clamp(48px,9vw,86px);height:auto}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:18px}
+.legend .item{display:flex;gap:10px;align-items:center;background:var(--chip);border-radius:16px;padding:8px 12px}
+.legend svg{width:44px;height:44px;flex:none}
+.legend b{display:block;font-size:15px}
+.legend span{font-size:13px;color:var(--muted)}
+.dots{display:inline-flex;gap:3px;vertical-align:middle;margin-right:4px}
+.dots i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.15)}
+.tips{margin:16px 0 0;padding-left:20px;color:var(--muted);font-size:14px}
+.tips li{margin:2px 0}
+
+/* step 2 */
+.fixwrap{display:flex;justify-content:center;background:var(--stage);border-radius:20px;padding:12px;min-height:260px}
+#fixCv{touch-action:none;cursor:grab;border-radius:8px;display:block}
+#fixCv.dragging{cursor:grabbing}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.row .spacer{flex:1}
+
+/* step 3 */
+.stagewrap{position:relative;background:var(--stage);border-radius:22px;padding:46px 14px 14px;display:flex;justify-content:center}
+.stagebox{position:relative}
+#stageCv{display:block;border-radius:10px;box-shadow:0 2px 0 var(--line)}
+.rider{position:absolute;top:-44px;left:0;width:44px;height:44px;margin-left:-22px;pointer-events:none;will-change:transform}
+.rider svg{width:100%;height:100%}
+.startover{position:absolute;inset:0;display:grid;place-items:center;background:rgba(6,43,46,.35);border-radius:10px}
+.startover .btn{font-size:20px;padding:16px 30px}
+.transport{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
+.playbtn{width:62px;height:62px;border-radius:50%;padding:0}
+.playbtn svg{width:28px;height:28px}
+.sweep{font-size:14px;color:var(--muted);min-width:5em}
+.tempo{display:flex;align-items:center;gap:8px;font-size:14px;flex:1 1 220px}
+.tempo input{flex:1;accent-color:var(--teal)}
+.tempo output{font-family:"Fredoka",sans-serif;font-weight:600;min-width:4.5em}
+.playlayout{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media (min-width:900px){.playlayout{grid-template-columns:minmax(0,1fr) 300px;align-items:start}}
+.side{display:grid;gap:18px;align-content:start}
+.group h3{margin:0 0 8px;font-size:15px;font-weight:900}
+.group h3 .sub{font-weight:500;color:var(--muted);font-size:13px;margin-left:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+#scaleChips{display:grid;grid-template-columns:1fr 1fr}
+.chip{border:2px solid var(--line);background:var(--chip);border-radius:16px;padding:7px 12px;cursor:pointer;text-align:left;line-height:1.25}
+.chip small{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.chip[aria-pressed="true"]{border-color:var(--teal);background:var(--teal);color:#fff}
+.chip[aria-pressed="true"] small{color:#e5fffb}
+.chip.k{min-width:42px;text-align:center;font-family:"Fredoka",sans-serif;font-weight:600;font-size:17px;padding:6px 10px}
+.band{display:grid;grid-template-columns:1fr;gap:8px}
+@media (max-width:899px){.band{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}}
+.member{border:2px solid var(--line);background:var(--chip);border-radius:18px;padding:6px 12px;cursor:pointer;display:grid;grid-template-columns:46px 1fr;column-gap:10px;align-items:center;text-align:left;transition:opacity .2s}
+.member svg{width:46px;height:46px;grid-row:1/span 2;transform-origin:50% 90%}
+.member .nm{font-family:"Fredoka",sans-serif;font-weight:600;font-size:15px;letter-spacing:.03em}
+.member .nm small{font-family:"Noto Sans TC",sans-serif;font-weight:500;font-size:13px;margin-left:6px;letter-spacing:0}
+.member .cnt{font-size:12px;color:var(--muted)}
+.member[aria-pressed="false"]{opacity:.45}
+.member[aria-pressed="false"] .cnt::after{content:"・休息中"}
+.member.hit svg{animation:hop .32s ease-out}
+@keyframes hop{0%{transform:translateY(0) scale(1)}40%{transform:translateY(-9px) scale(1.06,.96)}100%{transform:translateY(0) scale(1)}}
+.foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px;padding-top:14px;border-top:2px dashed var(--line)}
+.playmain{min-width:0}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.toggle input{width:18px;height:18px;accent-color:var(--teal)}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(4,30,32,.6);display:grid;place-items:center;z-index:40;padding:16px}
+.dialog{background:var(--panel);border-radius:26px;padding:22px;width:min(560px,100%);position:relative;max-height:92vh;overflow:auto}
+.dialog .x{position:absolute;right:12px;top:10px;border:0;background:var(--chip);width:38px;height:38px;border-radius:50%;font-size:22px;cursor:pointer}
+.camview{background:#000;border-radius:16px;overflow:hidden;aspect-ratio:4/3;display:grid;place-items:center;color:#fff;text-align:center}
+.camview video{width:100%;height:100%;object-fit:cover}
+.progress{height:14px;background:var(--chip);border-radius:99px;overflow:hidden;margin-top:12px}
+.progress i{display:block;height:100%;width:0;background:var(--orange);transition:width .2s}
+.msg{font-size:14px;color:var(--muted);margin:10px 0 0;min-height:1.6em}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,calc(100% + 60px));visibility:hidden;background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:999px;font-weight:700;z-index:60;transition:transform .3s;max-width:92vw;text-align:center}
+#toast.on{transform:translate(-50%,0);visibility:visible}
+@media (prefers-reduced-motion:reduce){.scanzone .beam{animation:none;opacity:0}.member.hit svg{animation:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span id="logo" aria-hidden="true"></span>
+    <div>
+      <h1><span class="latin">NUMINA</span> 畫聲掃描機</h1>
+      <p>畫一張圖，讓數感宇宙的朋友們把它演奏出來</p>
+    </div>
+  </div>
+  <ol class="stepper" aria-label="步驟">
+    <li><button id="st1" data-go="1" aria-current="step"><span class="n">1</span>掃描圖片</button></li>
+    <li><button id="st2" data-go="2" disabled><span class="n">2</span>拉正紙張</button></li>
+    <li><button id="st3" data-go="3" disabled><span class="n">3</span>掃描演奏</button></li>
+  </ol>
+</header>
+
+<main>
+  <!-- STEP 1 -->
+  <section id="sec1" class="panel" aria-labelledby="h-scan">
+    <h2 id="h-scan">掃描圖片區</h2>
+    <p class="lead">在白紙上用彩色筆畫線條、點點或色塊，再拍下整張紙。每一種顏色，都會交給一位數感宇宙的朋友演奏。</p>
+    <div class="scanzone" id="zone">
+      <div class="beam"></div>
+      <h3>把你的畫放進來</h3>
+      <p>用攝影機拍下來，或從相簿選一張已經拍好的照片。</p>
+      <div class="actions">
+        <button class="btn" id="camBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>拍照</button>
+        <button class="btn soft" id="albumBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>從相簿選圖</button>
+      </div>
+      <p style="margin:12px auto 0"><button class="linkish" id="demoBtn">還沒畫？先用示範畫聽聽看</button></p>
+      <div class="lineup" id="lineup" aria-hidden="true"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <ul class="tips">
+      <li>畫得越高，聲音越高；畫在越左邊，越早被演奏。</li>
+      <li>橫線會拉成長音，斜線會變成音階，點點會跳出短音，大色塊會變成和音。</li>
+      <li>白紙、粗一點的筆、光線充足，掃描最準。</li>
+    </ul>
+    <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+    <input type="file" id="fileAlbum" accept="image/*" hidden>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="sec2" class="panel" aria-labelledby="h-fix" hidden>
+    <h2 id="h-fix">拉正紙張</h2>
+    <p class="lead">拖動四個圓點，對準紙張的四個角。系統會把框起來的範圍拉成長方形，就像投影機的梯形校正。</p>
+    <div class="fixwrap" id="fixWrap"><canvas id="fixCv" aria-label="照片與四個可拖動的角點"></canvas></div>
+    <div class="row">
+      <button class="btn soft" id="autoBtn">自動找紙張</button>
+      <button class="btn soft" id="fullBtn">用整張照片</button>
+      <button class="btn soft" id="againBtn">換一張圖</button>
+      <span class="spacer"></span>
+      <button class="btn warm" id="rectBtn">拉正並開始演奏</button>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section id="sec3" class="panel" aria-label="掃描演奏" hidden>
+    <div class="playlayout">
+      <div class="playmain">
+        <div class="stagewrap" id="stageWrap">
+          <div class="stagebox" id="stageBox">
+            <div class="rider" id="rider" aria-hidden="true"></div>
+            <canvas id="stageCv" aria-label="拉正後的圖畫與掃描線"></canvas>
+            <div class="startover" id="startOver"><button class="btn warm" id="bigPlay">開始掃描</button></div>
+          </div>
+        </div>
+        <div class="transport">
+          <button class="btn playbtn" id="playBtn" aria-label="播放"></button>
+          <span class="sweep" id="sweepLbl">準備好了</span>
+          <label class="tempo">速度<input type="range" id="tempo" min="60" max="150" step="2" value="96"><output id="tempoOut" class="latin">96 BPM</output></label>
+          <button class="btn warm" id="dlBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>下載音檔</button>
+        </div>
+        <div class="foot">
+          <label class="toggle"><input type="checkbox" id="gridTog">顯示掃描到的音符</label>
+          <span style="flex:1"></span>
+          <button class="btn soft" id="refixBtn">重新拉正</button>
+          <button class="btn soft" id="newBtn">換一張圖</button>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="group"><h3>曲調</h3><div class="chips" id="scaleChips" role="group" aria-label="曲調"></div></div>
+        <div class="group"><h3>音調（主音）</h3><div class="chips" id="keyChips" role="group" aria-label="音調"></div></div>
+        <div class="group">
+          <h3>樂團成員<span class="sub">點一下可以讓他休息</span></h3>
+          <div class="band" id="band"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<!-- camera -->
+<div class="modal" id="camModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="camTitle">
+    <button class="x" id="camX" aria-label="關閉">×</button>
+    <h2 id="camTitle">拍下你的畫</h2>
+    <p class="msg" id="camMsg">讓整張紙都在畫面裡，四個角都看得到。</p>
+    <div class="camview" id="camView"><video id="video" playsinline muted></video></div>
+    <div class="row">
+      <button class="btn" id="snapBtn" disabled>拍下這張</button>
+      <button class="btn soft" id="camAlbum">改從相簿選圖</button>
+    </div>
+  </div>
+</div>
+
+<!-- download -->
+<div class="modal" id="dlModal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlTitle">
+    <button class="x" id="dlX" aria-label="關閉">×</button>
+    <h2 id="dlTitle">下載音檔</h2>
+    <p class="msg" style="margin-top:4px">用現在的曲調、音調、速度和樂團成員，把整張畫錄成一首曲子。</p>
+    <div class="group" style="margin-top:12px">
+      <h3>要演奏幾遍？</h3>
+      <div class="chips" id="loopChips" role="group" aria-label="演奏遍數"></div>
+    </div>
+    <div class="row"><button class="btn warm" id="makeBtn">開始錄音</button></div>
+    <div class="progress" id="dlProg" hidden><i></i></div>
+    <p class="msg" id="dlMsg"></p>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const dpr=()=>Math.min(window.devicePixelRatio||1,2);
+const mk=(w,h)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c;};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let toastT;function toast(t){const el=$("toast");el.textContent=t;el.classList.add("on");clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove("on"),3200);}
+
+/* ---------- 角色插畫 ---------- */
+function flower(cx,cy,R,r,n,fill){let s=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="${fill}"/>`;for(let i=0;i<n;i++){const a=i/n*Math.PI*2-Math.PI/2;s+=`<circle cx="${(cx+Math.cos(a)*R).toFixed(1)}" cy="${(cy+Math.sin(a)*R).toFixed(1)}" r="${r}" fill="${fill}"/>`;}return s;}
+const eye=(x,y,rx,ry,pr)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#fff"/><ellipse cx="${x+.8}" cy="${y+1}" rx="${(pr*.72).toFixed(1)}" ry="${pr}" fill="#111"/>`;
+const ART={
+  NUMINA:`<path d="M30 44V70a13 13 0 0 0 26 0V60a11 11 0 0 1 22 0V84" stroke="#5fd4c4" stroke-width="13" fill="none" stroke-linecap="round"/><circle cx="30" cy="35" r="12" fill="#5fd4c4"/>${eye(25,35,4.6,5.4,3)}${eye(35.5,35,4.6,5.4,3)}<circle cx="31" cy="43" r="1.3" fill="#111"/><path d="M17 22Q30 17 43 21M24 21v8M36 21q0 7 5 9" stroke="#5fd4c4" stroke-width="4.5" fill="none" stroke-linecap="round"/>`,
+  ANU:`<path d="M26 34L31 16 42 28ZM74 34L69 16 58 28Z" fill="#86c03c" stroke="#86c03c" stroke-width="4" stroke-linejoin="round"/><path d="M20 56A30 28 0 0 1 80 56Z" fill="#f4c6bd"/><rect x="20" y="56" width="60" height="28" fill="#86c03c"/><path d="M50 56L40 84H60Z" fill="#c6dc3c"/><rect x="12" y="58" width="12" height="22" rx="6" fill="#f4c6bd"/><rect x="76" y="58" width="12" height="22" rx="6" fill="#f4c6bd"/><path d="M22 84h22v6a4 4 0 0 1-4 4H26a4 4 0 0 1-4-4zM56 84h22v6a4 4 0 0 1-4 4H60a4 4 0 0 1-4-4z" fill="#b9934a"/><ellipse cx="42" cy="44" rx="3.6" ry="4.8" fill="#5a3b2a"/><ellipse cx="58" cy="44" rx="3.6" ry="4.8" fill="#5a3b2a"/><path d="M45 50q5 4 10 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+  NUMI:`${flower(50,62,18,11,9,"#ffd9b8")}<circle cx="45" cy="61" r="2.6" fill="#111"/><circle cx="55" cy="61" r="2.6" fill="#111"/>`,
+  NUMNUM:`${flower(50,56,25,15,8,"#10a531")}${eye(41,52,6,8.5,4.6)}${eye(58,52,6,8.5,4.6)}`,
+  ANA:`<path d="M18 18H82L50 50Z" fill="#f3c4bf"/><path d="M82 18V82L50 50Z" fill="#86c03c"/><path d="M18 18L50 50 18 82Z" fill="#fde6c8"/><path d="M18 82L50 50 82 82Z" fill="#b9934a"/><path d="M50 82L66 66 82 82Z" fill="#2e8b57"/><path d="M18 82L34 66 50 82Z" fill="#f0aaa8"/><path d="M38 18L50 30 62 18Z" fill="#f7d6d2"/>${eye(44,28,3.3,3.8,2.1)}${eye(56,28,3.3,3.8,2.1)}<path d="M47 36q3 3 6 0" stroke="#7a4a3a" stroke-width="2" fill="none" stroke-linecap="round"/>`
+};
+const svgOf=(name,cls="")=>`<svg viewBox="0 0 100 100" class="${cls}" aria-hidden="true">${ART[name]}</svg>`;
+
+/* ---------- 樂團設定：顏色 → 角色 → 樂器 ---------- */
+const VOICES=[
+  {id:"piano",char:"NUMINA",inst:"鋼琴",colors:"黑色・鉛筆",dots:["#26393b","#8c9a9b"],fx:"#0aaca3",shape:"diamond"},
+  {id:"pluck",char:"ANU",inst:"撥弦琴",colors:"紅色・粉紅",dots:["#e83e48","#f4a3b5"],fx:"#e83e48",shape:"tri"},
+  {id:"bell",char:"NUMI",inst:"音樂盒",colors:"橘色・黃色",dots:["#ff9600","#f3e43b"],fx:"#ff9600",shape:"circle"},
+  {id:"bass",char:"NUMNUM",inst:"低音貝斯",colors:"綠色",dots:["#10a531"],fx:"#10a531",shape:"square"},
+  {id:"flute",char:"ANA",inst:"長笛",colors:"藍色・青色・紫色",dots:["#2b70c9","#00b1e0","#8a5cc9"],fx:"#2b70c9",shape:"ring"}
+];
+const SCALES={
+  sunny:{name:"晴天",desc:"大調五聲・明亮",steps:[0,2,4,7,9]},
+  night:{name:"星夜",desc:"小調五聲・溫柔",steps:[0,3,5,7,10]},
+  pop:{name:"流行",desc:"和弦進行 I–V–vi–IV",chord:true},
+  cloud:{name:"雲朵",desc:"全音音階・夢幻",steps:[0,2,4,6,8,10]},
+  blues:{name:"藍調",desc:"藍調音階・搖擺",steps:[0,3,5,6,7,10],swing:true},
+  wa:{name:"和風",desc:"陰音階・神秘",steps:[0,1,5,7,8]}
+};
+const KEYS=[["C",0],["D",2],["E",4],["F",5],["G",-5],["A",-3]];
+const BEATS={none:"不要",light:"輕輕",groove:"律動"};
+const PROG=[[0,"M"],[-5,"M"],[-3,"m"],[5,"M"]];
+const ROWS=14;
+const state={steps:64,scale:"sunny",key:0,bpm:96,beat:"light",muted:[false,false,false,false,false],grid:false,loops:2};
+
+/* ---------- 靜態畫面 ---------- */
+$("logo").innerHTML=svgOf("NUMINA");
+$("lineup").innerHTML=["NUMNUM","NUMI","NUMINA","ANU","ANA"].map(n=>svgOf(n)).join("");
+$("legend").innerHTML=VOICES.map(v=>`<div class="item">${svgOf(v.char)}<div><b>${v.char}・${v.inst}</b><span><span class="dots">${v.dots.map(c=>`<i style="background:${c}"></i>`).join("")}</span>${v.colors}</span></div></div>`).join("");
+$("rider").innerHTML=svgOf("NUMINA");
+
+/* ---------- 步驟切換 ---------- */
+let stepNow=1;
+function go(n){
+  stepNow=n;
+  [1,2,3].forEach(i=>{$("sec"+i).hidden=i!==n;const b=$("st"+i);if(i===n)b.setAttribute("aria-current","step");else b.removeAttribute("aria-current");});
+  $("st2").disabled=!srcCanvas;$("st3").disabled=!rectCanvas;
+  if(n!==3)stopPlay();
+  if(n===2)requestAnimationFrame(layoutFix);
+  if(n===3)requestAnimationFrame(layoutStage);
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(+b.dataset.go)));
+
+/* ---------- 取得圖片 ---------- */
+let srcCanvas=null,srcData=null,corners=null,rectCanvas=null;
+$("albumBtn").onclick=()=>$("fileAlbum").click();
+$("fileAlbum").onchange=e=>{loadFile(e.target.files[0]);e.target.value="";};
+$("fileCam").onchange=e=>{loadFile(e.target.files[0]);e.target.value="";};
+$("camBtn").onclick=()=>{
+  const coarse=window.matchMedia&&matchMedia("(pointer:coarse)").matches;
+  if(coarse||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("fileCam").click();return;}
+  openCam();
+};
+$("demoBtn").onclick=()=>{const c=makeDemo();setSource(c,c.width,c.height);};
+const zone=$("zone");
+["dragenter","dragover"].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.add("drag");}));
+["dragleave","drop"].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.remove("drag");}));
+zone.addEventListener("drop",e=>{const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)loadFile(f);});
+
+function loadFile(f){
+  if(!f)return;
+  if(f.type&&!f.type.startsWith("image/")){toast("請選擇圖片檔（JPG 或 PNG）。");return;}
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{setSource(img,img.naturalWidth,img.naturalHeight);URL.revokeObjectURL(url);};
+  img.onerror=()=>{toast("這個檔案打不開，請換一張 JPG 或 PNG 圖片。");URL.revokeObjectURL(url);};
+  img.src=url;
+}
+function setSource(el,w,h){
+  const s=Math.min(1,1600/Math.max(w,h));
+  const c=mk(Math.round(w*s),Math.round(h*s)),x=c.getContext("2d",{willReadFrequently:true});
+  x.drawImage(el,0,0,c.width,c.height);
+  srcCanvas=c;srcData=x.getImageData(0,0,c.width,c.height);
+  rectCanvas=null;
+  const q=detectPaper();corners=q||insetCorners(.06);
+  go(2);
+  toast(q?"已自動找到紙張的四個角，也可以自己拖動微調。":"請拖動四個圓點，對準紙張的四個角。");
+}
+function insetCorners(p){const W=srcCanvas.width,H=srcCanvas.height,dx=W*p,dy=H*p;return [[dx,dy],[W-dx,dy],[W-dx,H-dy],[dx,H-dy]];}
+
+/* 攝影機 */
+let stream=null;
+async function openCam(){
+  $("camModal").hidden=false;$("snapBtn").disabled=true;$("camMsg").textContent="正在開啟攝影機…";
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1920},height:{ideal:1080}},audio:false});
+    const v=$("video");v.srcObject=stream;await v.play();
+    $("snapBtn").disabled=false;$("camMsg").textContent="讓整張紙都在畫面裡，四個角都看得到。";
+  }catch(e){
+    $("camMsg").textContent="這裡打不開攝影機。請按「改從相簿選圖」，用手機拍好再上傳。";
+  }
+}
+function closeCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}$("video").srcObject=null;$("camModal").hidden=true;}
+$("camX").onclick=closeCam;
+$("camAlbum").onclick=()=>{closeCam();$("fileAlbum").click();};
+$("snapBtn").onclick=()=>{const v=$("video");if(!v.videoWidth)return;const c=mk(v.videoWidth,v.videoHeight);c.getContext("2d").drawImage(v,0,0);closeCam();setSource(c,c.width,c.height);};
+
+/* ---------- 投影幾何：4 點透視轉換 ---------- */
+function solve(A,b){
+  const n=b.length;
+  for(let i=0;i<n;i++){
+    let p=i;for(let r=i+1;r<n;r++)if(Math.abs(A[r][i])>Math.abs(A[p][i]))p=r;
+    [A[i],A[p]]=[A[p],A[i]];[b[i],b[p]]=[b[p],b[i]];
+    const piv=A[i][i];if(Math.abs(piv)<1e-10)return null;
+    for(let r=0;r<n;r++){if(r===i)continue;const f=A[r][i]/piv;if(!f)continue;for(let k=i;k<n;k++)A[r][k]-=f*A[i][k];b[r]-=f*b[i];}
+  }
+  return b.map((v,i)=>v/A[i][i]);
+}
+function homog(from,to){
+  const A=[],b=[];
+  for(let i=0;i<4;i++){const [x,y]=from[i],[u,v]=to[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]);b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]);b.push(v);}
+  return solve(A,b);
+}
+const apH=(h,x,y)=>{const w=h[6]*x+h[7]*y+1;return [(h[0]*x+h[1]*y+h[2])/w,(h[3]*x+h[4]*y+h[5])/w];};
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+
+function warpInto(srcImg,sw,sh,h,W,H,outData,mask){
+  const sd=srcImg,od=outData;
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const X=x+.5,Y=y+.5,w=h[6]*X+h[7]*Y+1;
+      let sx=(h[0]*X+h[1]*Y+h[2])/w-.5,sy=(h[3]*X+h[4]*Y+h[5])/w-.5;
+      if(mask&&(sx<0||sy<0||sx>sw-1||sy>sh-1))continue;
+      sx=clamp(sx,0,sw-1.001);sy=clamp(sy,0,sh-1.001);
+      const x0=sx|0,y0=sy|0,fx=sx-x0,fy=sy-y0,i00=(y0*sw+x0)*4,i10=i00+4,i01=i00+sw*4,i11=i01+4,o=(y*W+x)*4;
+      for(let c=0;c<3;c++){
+        const top=sd[i00+c]+(sd[i10+c]-sd[i00+c])*fx,bot=sd[i01+c]+(sd[i11+c]-sd[i01+c])*fx;
+        od[o+c]=top+(bot-top)*fy;
+      }
+      od[o+3]=255;
+    }
+  }
+}
+function rectify(){
+  const [tl,tr,br,bl]=corners;
+  let W=Math.max(dist(tl,tr),dist(bl,br)),H=Math.max(dist(tl,bl),dist(tr,br));
+  const s=Math.min(1,1400/Math.max(W,H));W=Math.max(40,Math.round(W*s));H=Math.max(40,Math.round(H*s));
+  const h=homog([[0,0],[W,0],[W,H],[0,H]],corners);
+  if(!h)return false;
+  const c=mk(W,H),x=c.getContext("2d",{willReadFrequently:true}),out=x.createImageData(W,H);
+  warpInto(srcData.data,srcData.width,srcData.height,h,W,H,out.data,false);
+  x.putImageData(out,0,0);rectCanvas=c;return true;
+}
+
+/* 自動找紙張：亮、低彩度的最大區塊 */
+function detectPaper(){
+  const W=srcCanvas.width,H=srcCanvas.height,s=Math.min(1,220/Math.max(W,H));
+  const w=Math.max(8,Math.round(W*s)),h=Math.max(8,Math.round(H*s));
+  const c=mk(w,h),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(srcCanvas,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,N=w*h,L=new Float32Array(N),S=new Float32Array(N),hist=new Float64Array(256);
+  for(let i=0;i<N;i++){const r=d[i*4],g=d[i*4+1],b=d[i*4+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=.299*r+.587*g+.114*b;L[i]=l;S[i]=(mx-mn)/(mx+1);hist[l|0]++;}
+  let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];
+  let sB=0,wB=0,best=0,t=128;
+  for(let i=0;i<256;i++){wB+=hist[i];if(!wB)continue;const wF=N-wB;if(!wF)break;sB+=i*hist[i];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;t=i;}}
+  const m=new Uint8Array(N);for(let i=0;i<N;i++)m[i]=L[i]>t&&S[i]<.38?1:0;
+  const lab=new Int32Array(N),q=new Int32Array(N);let bestId=0,bestSize=0,id=0;
+  for(let i=0;i<N;i++){if(!m[i]||lab[i])continue;id++;let qh=0,qt=0;q[qt++]=i;lab[i]=id;
+    while(qh<qt){const p=q[qh++],px=p%w,py=(p/w)|0;
+      if(px>0&&m[p-1]&&!lab[p-1]){lab[p-1]=id;q[qt++]=p-1;}
+      if(px<w-1&&m[p+1]&&!lab[p+1]){lab[p+1]=id;q[qt++]=p+1;}
+      if(py>0&&m[p-w]&&!lab[p-w]){lab[p-w]=id;q[qt++]=p-w;}
+      if(py<h-1&&m[p+w]&&!lab[p+w]){lab[p+w]=id;q[qt++]=p+w;}}
+    if(qt>bestSize){bestSize=qt;bestId=id;}}
+  const area=bestSize/N;
+  if(area<.12)return null;
+  if(area>.92)return insetCorners(.01);
+  let a=[1e9,0],b=[-1e9,0],cc=[-1e9,0],dd=[1e9,0];
+  for(let i=0;i<N;i++){if(lab[i]!==bestId)continue;const px=i%w+.5,py=((i/w)|0)+.5;
+    if(px+py<a[0])a=[px+py,i];if(px+py>b[0])b=[px+py,i];if(px-py>cc[0])cc=[px-py,i];if(px-py<dd[0])dd=[px-py,i];}
+  const P=i=>[(i%w+.5)/s,(((i/w)|0)+.5)/s];
+  const quad=[P(a[1]),P(cc[1]),P(b[1]),P(dd[1])];
+  let ar=0;for(let i=0;i<4;i++){const p=quad[i],n=quad[(i+1)%4];ar+=p[0]*n[1]-n[0]*p[1];}
+  if(Math.abs(ar)/2<W*H*.1)return null;
+  return quad;
+}
+
+/* ---------- 步驟 2：拖動四個角 ---------- */
+const fix={scale:1,w:0,h:0,drag:-1,off:[0,0]};
+const fixCv=$("fixCv");
+function layoutFix(){
+  if(!srcCanvas||stepNow!==2)return;
+  const wrap=$("fixWrap"),maxW=wrap.clientWidth-24,maxH=Math.max(240,window.innerHeight*.62),a=srcCanvas.width/srcCanvas.height;
+  let w=maxW,h=w/a;if(h>maxH){h=maxH;w=h*a;}
+  fix.w=w;fix.h=h;fix.scale=w/srcCanvas.width;
+  fixCv.style.width=w+"px";fixCv.style.height=h+"px";fixCv.width=Math.round(w*dpr());fixCv.height=Math.round(h*dpr());
+  drawFix();
+}
+function drawFix(){
+  if(!srcCanvas)return;
+  const x=fixCv.getContext("2d"),k=dpr(),s=fix.scale;
+  x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,fixCv.width,fixCv.height);
+  x.setTransform(k*s,0,0,k*s,0,0);x.drawImage(srcCanvas,0,0);
+  x.setTransform(k,0,0,k,0,0);
+  const P=corners.map(p=>[p[0]*s,p[1]*s]);
+  x.beginPath();x.rect(0,0,fix.w,fix.h);x.moveTo(...P[0]);for(let i=1;i<4;i++)x.lineTo(...P[i]);x.closePath();
+  x.fillStyle="rgba(6,43,46,.55)";x.fill("evenodd");
+  const h=homog([[0,0],[1,0],[1,1],[0,1]],P);
+  if(h){x.strokeStyle="rgba(255,255,255,.7)";x.lineWidth=1.2;x.setLineDash([5,5]);
+    for(let i=1;i<4;i++){const t=i/4;let a=apH(h,t,0),b=apH(h,t,1);x.beginPath();x.moveTo(...a);x.lineTo(...b);x.stroke();a=apH(h,0,t);b=apH(h,1,t);x.beginPath();x.moveTo(...a);x.lineTo(...b);x.stroke();}
+    x.setLineDash([]);}
+  x.beginPath();x.moveTo(...P[0]);for(let i=1;i<4;i++)x.lineTo(...P[i]);x.closePath();
+  x.lineWidth=6;x.strokeStyle="rgba(255,255,255,.9)";x.stroke();x.lineWidth=3;x.strokeStyle="#0aaca3";x.stroke();
+  P.forEach((p,i)=>{const on=i===fix.drag;x.beginPath();x.arc(p[0],p[1],on?17:14,0,Math.PI*2);x.fillStyle="rgba(255,255,255,.92)";x.fill();x.lineWidth=4;x.strokeStyle=on?"#ff9600":"#0aaca3";x.stroke();x.beginPath();x.arc(p[0],p[1],3,0,Math.PI*2);x.fillStyle=on?"#ff9600":"#097881";x.fill();});
+  if(fix.drag>=0){
+    const p=P[fix.drag],R=58,zoom=3,leftSide=p[0]>fix.w/2,cx=leftSide?R+10:fix.w-R-10,cy=R+10;
+    x.save();x.beginPath();x.arc(cx,cy,R,0,Math.PI*2);x.clip();
+    const src=corners[fix.drag],half=R/(zoom*s);
+    x.fillStyle="#000";x.fillRect(cx-R,cy-R,R*2,R*2);
+    x.drawImage(srcCanvas,src[0]-half,src[1]-half,half*2,half*2,cx-R,cy-R,R*2,R*2);
+    x.strokeStyle="#ff9600";x.lineWidth=2;x.beginPath();x.moveTo(cx-R,cy);x.lineTo(cx+R,cy);x.moveTo(cx,cy-R);x.lineTo(cx,cy+R);x.stroke();
+    x.restore();x.beginPath();x.arc(cx,cy,R,0,Math.PI*2);x.lineWidth=4;x.strokeStyle="#fff";x.stroke();
+  }
+}
+function evPt(e){const r=fixCv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
+fixCv.addEventListener("pointerdown",e=>{
+  const p=evPt(e),s=fix.scale;let bi=-1,bd=1e9;
+  corners.forEach((c,i)=>{const d=Math.hypot(c[0]*s-p[0],c[1]*s-p[1]);if(d<bd){bd=d;bi=i;}});
+  if(bd>64)return;
+  fix.drag=bi;fix.off=[corners[bi][0]*s-p[0],corners[bi][1]*s-p[1]];
+  fixCv.setPointerCapture(e.pointerId);fixCv.classList.add("dragging");drawFix();e.preventDefault();
+});
+fixCv.addEventListener("pointermove",e=>{
+  if(fix.drag<0)return;const p=evPt(e),s=fix.scale;
+  corners[fix.drag]=[clamp((p[0]+fix.off[0])/s,0,srcCanvas.width),clamp((p[1]+fix.off[1])/s,0,srcCanvas.height)];drawFix();
+});
+const endDrag=()=>{if(fix.drag<0)return;fix.drag=-1;fixCv.classList.remove("dragging");drawFix();};
+fixCv.addEventListener("pointerup",endDrag);fixCv.addEventListener("pointercancel",endDrag);
+$("autoBtn").onclick=()=>{const q=detectPaper();if(q){corners=q;drawFix();toast("找到紙張了！可以再微調四個角。");}else toast("找不到清楚的紙張邊緣，請手動拖動四個角。");};
+$("fullBtn").onclick=()=>{corners=insetCorners(0);drawFix();};
+$("againBtn").onclick=()=>go(1);
+$("rectBtn").onclick=()=>{
+  const btn=$("rectBtn");btn.disabled=true;btn.textContent="拉正中…";
+  setTimeout(()=>{
+    const ok=rectify();btn.disabled=false;btn.textContent="拉正並開始演奏";
+    if(!ok){toast("四個角的位置太奇怪了，請重新拉一次。");return;}
+    analyze();go(3);
+  },30);
+};
+
+/* ---------- 顏色辨識 → 音符 ---------- */
+let grid=null,notes=[],notesByStep=[];
+function hueOf(r,g,b,mx,mn){const d=mx-mn;if(d<=0)return 0;let h;if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;return h<0?h+360:h;}
+function classify(r,g,b){
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn,lum=.299*r+.587*g+.114*b,dark=1-lum;
+  const inkDark=dark>.3,inkColor=sat>.2&&(1-mn)>.28;
+  if(!inkDark&&!inkColor)return -1;
+  if(sat<.16)return inkDark?0:-1;
+  const h=hueOf(r,g,b,mx,mn);
+  if(h<18||h>=335)return 1;
+  if(h<78)return 2;
+  if(h<168)return 3;
+  if(h<268)return 4;
+  return lum>.55?1:4;
+}
+function analyze(){
+  const steps=state.steps,CW=10,CH=10,gw=steps*CW,gh=ROWS*CH,nC=steps*ROWS;
+  const c=mk(gw,gh),x=c.getContext("2d",{willReadFrequently:true});x.imageSmoothingQuality="high";x.drawImage(rectCanvas,0,0,gw,gh);
+  const d=x.getImageData(0,0,gw,gh).data;
+  // 每格的紙色（第 90 百分位亮度的像素）
+  const cb=new Float32Array(nC*3),cl=new Float32Array(nC),low=new Uint8Array(nC),idx=new Array(CW*CH);
+  let gmax=0;
+  for(let cy=0;cy<ROWS;cy++)for(let cx=0;cx<steps;cx++){
+    let k=0;for(let yy=0;yy<CH;yy++)for(let xx=0;xx<CW;xx++){const p=((cy*CH+yy)*gw+cx*CW+xx)*4;idx[k++]=p;}
+    idx.sort((p,q)=>(d[p]+d[p+1]+d[p+2])-(d[q]+d[q+1]+d[q+2]));
+    const p=idx[Math.floor(k*.9)],ci=cy*steps+cx;
+    cb[ci*3]=d[p];cb[ci*3+1]=d[p+1];cb[ci*3+2]=d[p+2];
+    const l=.299*d[p]+.587*d[p+1]+.114*d[p+2];cl[ci]=l;if(l>gmax)gmax=l;
+  }
+  let pr=0,pg=0,pb=0,pn=0;
+  for(let i=0;i<nC;i++){const r=cb[i*3],g=cb[i*3+1],b=cb[i*3+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);
+    low[i]=((mx-mn)/(mx+1)<.2&&cl[i]>gmax*.55)?1:0;if(low[i]){pr+=r;pg+=g;pb+=b;pn++;}}
+  const paper=pn?[pr/pn,pg/pn,pb/pn]:[gmax,gmax,gmax];
+  const bg=new Float32Array(nC*3);
+  for(let cy=0;cy<ROWS;cy++)for(let cx=0;cx<steps;cx++){
+    const cand=[];
+    for(let yy=Math.max(0,cy-4);yy<=Math.min(ROWS-1,cy+4);yy++)for(let xx=Math.max(0,cx-4);xx<=Math.min(steps-1,cx+4);xx++){const j=yy*steps+xx;if(low[j])cand.push(j);}
+    const ci=cy*steps+cx;
+    if(!cand.length){bg[ci*3]=paper[0];bg[ci*3+1]=paper[1];bg[ci*3+2]=paper[2];continue;}
+    cand.sort((a,b)=>cl[b]-cl[a]);const n=Math.min(3,cand.length);let r=0,g=0,b=0;
+    for(let i=0;i<n;i++){r+=cb[cand[i]*3];g+=cb[cand[i]*3+1];b+=cb[cand[i]*3+2];}
+    bg[ci*3]=r/n;bg[ci*3+1]=g/n;bg[ci*3+2]=b/n;
+  }
+  const counts=new Float32Array(VOICES.length*nC),mx0=gw*.02,mx1=gw*.98,my0=gh*.03,my1=gh*.97;
+  for(let y=0;y<gh;y++){if(y<my0||y>my1)continue;const cy=(y/CH)|0;
+    for(let xx=0;xx<gw;xx++){if(xx<mx0||xx>mx1)continue;const ci=cy*steps+((xx/CW)|0),p=(y*gw+xx)*4;
+      const r=Math.min(1.08,d[p]/Math.max(20,bg[ci*3])),g=Math.min(1.08,d[p+1]/Math.max(20,bg[ci*3+1])),b=Math.min(1.08,d[p+2]/Math.max(20,bg[ci*3+2]));
+      const v=classify(r,g,b);if(v>=0)counts[v*nC+ci]++;}}
+  for(let i=0;i<counts.length;i++)counts[i]/=CW*CH;
+  grid={steps,dens:counts};
+  buildNotes();
+}
+const TH=.06;
+function buildNotes(){
+  const steps=grid.steps,nC=steps*ROWS;notes=[];
+  VOICES.forEach((V,v)=>{
+    const maxDur=(V.id==="bass"||V.id==="flute")?8:4;let open=[];
+    for(let col=0;col<steps;col++){
+      const act=[];for(let r=0;r<ROWS;r++){const dn=grid.dens[v*nC+r*steps+col];act.push(dn>=TH?dn:0);}
+      const pts=[];let r=0;
+      while(r<ROWS){if(!act[r]){r++;continue;}const s=r;let sum=0;while(r<ROWS&&act[r]){sum+=act[r];r++;}
+        const e=r-1,len=e-s+1,dv=sum/len;
+        if(len>=4){pts.push([s,dv,true],[e,dv,true]);if(len>=7)pts.push([Math.round((s+e)/2),dv,true]);}
+        else pts.push([Math.round((s+e)/2),dv,false]);}
+      const next=[];
+      for(const [row,dv,blk] of pts){
+        const prev=open.find(n=>!n._u&&n.row===row&&n.dur<maxDur);
+        if(prev){prev._u=true;prev.dur++;next.push(prev);}
+        else{const n={v,col,row,dur:1,vel:clamp(.5+dv*1.3,.5,1),blk};notes.push(n);next.push(n);n._u=true;}
+      }
+      open=next;open.forEach(n=>n._u=false);
+    }
+  });
+  notesByStep=Array.from({length:steps},()=>[]);
+  notes.forEach(n=>notesByStep[n.col].push(n));
+  notesByStep.forEach(a=>{a.sort((p,q)=>q.vel-p.vel);if(a.length>6)a.length=6;});
+  const cnt=[0,0,0,0,0];notesByStep.forEach(a=>a.forEach(n=>cnt[n.v]++));
+  renderBand(cnt);
+  const total=cnt.reduce((a,b)=>a+b,0);
+  if(!total)setTimeout(()=>toast("沒有掃描到線條。試試「重新拉正」，或用更粗、顏色更深的筆再畫一次。"),400);
+}
+
+/* ---------- 音高 ---------- */
+const BASE={piano:48,pluck:48,bell:60,bass:36,flute:60};
+function midiOf(n){
+  const V=VOICES[n.v],rank=ROWS-1-n.row,sc=SCALES[state.scale],base=BASE[V.id]+state.key;
+  if(sc.chord){
+    const ci=Math.floor(n.col/(grid.steps/4))%4,[root,q]=PROG[ci];
+    const t=V.id==="bass"?[0,7]:(q==="M"?[0,2,4,7]:[0,3,7,10]);
+    const k=V.id==="bass"?Math.floor(rank/3):rank;
+    return base+root+12*Math.floor(k/t.length)+t[k%t.length];
+  }
+  const t=sc.steps,k=V.id==="bass"?Math.floor(rank/2):rank;
+  return base+12*Math.floor(k/t.length)+t[k%t.length];
+}
+
+/* ---------- 合成器（即時與離線共用） ---------- */
+function impulse(ctx,sec,decay){const len=Math.floor(ctx.sampleRate*sec),b=ctx.createBuffer(2,len,ctx.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
+function makeEngine(ctx,dest){
+  const master=ctx.createGain();master.gain.value=.85;
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-16;comp.knee.value=12;comp.ratio.value=4;comp.attack.value=.004;comp.release.value=.22;
+  master.connect(comp);comp.connect(dest);
+  const conv=ctx.createConvolver();conv.buffer=impulse(ctx,2.4,2.8);const rv=ctx.createGain();rv.gain.value=.9;rv.connect(conv);conv.connect(master);
+  const nb=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate),nd=nb.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+  return {ctx,dry:master,rv,noise:nb};
+}
+function route(E,node,send){node.connect(E.dry);const g=E.ctx.createGain();g.gain.value=send;node.connect(g);g.connect(E.rv);}
+function O(c,type,f,t,end){const o=c.createOscillator();o.type=type;o.frequency.value=f;o.start(t);o.stop(end);return o;}
+function decayEnv(g,t,a,peak,end){g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(.0001,end);}
+function holdEnv(g,t,a,peak,dur,rel){g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(peak,t+a);g.gain.linearRampToValueAtTime(peak*.78,Math.max(t+a+.02,t+dur));g.gain.exponentialRampToValueAtTime(.0001,t+Math.max(dur,a+.03)+rel);}
+function playNote(E,id,midi,t,dur,vel){
+  const c=E.ctx,f=440*Math.pow(2,(midi-69)/12);
+  if(id==="piano"){
+    const end=t+Math.max(1.3,dur+.7),g=c.createGain();decayEnv(g,t,.005,.3*vel,end);
+    const lp=c.createBiquadFilter();lp.type="lowpass";lp.frequency.value=Math.min(9000,f*7);
+    const o1=O(c,"triangle",f,t,end),o2=O(c,"sine",f*2,t,end),g2=c.createGain();g2.gain.value=.22;
+    o1.connect(lp);o2.connect(g2);g2.connect(lp);lp.connect(g);route(E,g,.32);
+  }else if(id==="pluck"){
+    const end=t+Math.max(.9,dur*.6+.5),g=c.createGain();decayEnv(g,t,.003,.17*vel,end);
+    const lp=c.createBiquadFilter();lp.type="lowpass";lp.Q.value=2;lp.frequency.setValueAtTime(Math.min(9000,f*10),t);lp.frequency.exponentialRampToValueAtTime(Math.max(200,f*1.4),t+.3);
+    O(c,"sawtooth",f,t,end).connect(lp);O(c,"square",f*1.004,t,end).connect(lp);lp.connect(g);route(E,g,.35);
+  }else if(id==="bell"){
+    const end=t+1.8,g=c.createGain();decayEnv(g,t,.002,.2*vel,end);
+    const car=O(c,"sine",f,t,end),mod=O(c,"sine",f*3,t,end),mg=c.createGain();
+    mg.gain.setValueAtTime(f*2.2,t);mg.gain.exponentialRampToValueAtTime(f*.02,t+.7);mod.connect(mg);mg.connect(car.frequency);
+    car.connect(g);route(E,g,.5);
+  }else if(id==="bass"){
+    const end=t+dur+.3,g=c.createGain();holdEnv(g,t,.012,.42*vel,dur,.18);
+    const lp=c.createBiquadFilter();lp.type="lowpass";lp.frequency.value=520;
+    O(c,"sine",f,t,end).connect(lp);const o2=O(c,"triangle",f,t,end),g2=c.createGain();g2.gain.value=.5;o2.connect(g2);g2.connect(lp);
+    lp.connect(g);route(E,g,.08);
+  }else if(id==="flute"){
+    const end=t+dur+.45,g=c.createGain();holdEnv(g,t,.07,.17*vel,dur,.3);
+    const o1=O(c,"sine",f,t,end),o2=O(c,"triangle",f*1.002,t,end),g2=c.createGain();g2.gain.value=.35;
+    const lfo=O(c,"sine",5.2,t,end),lg=c.createGain();lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.007,t+.25);lfo.connect(lg);lg.connect(o1.frequency);lg.connect(o2.frequency);
+    o1.connect(g);o2.connect(g2);g2.connect(g);route(E,g,.45);
+  }
+}
+function noiseHit(E,t,type,freq,peak,dec,send){
+  const c=E.ctx,s=c.createBufferSource();s.buffer=E.noise;const f=c.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=.8;
+  const g=c.createGain();decayEnv(g,t,.002,peak,t+dec);s.connect(f);f.connect(g);route(E,g,send);s.start(t,Math.random()*.5);s.stop(t+dec+.05);
+}
+function kick(E,t,peak){const c=E.ctx,o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(140,t);o.frequency.exponentialRampToValueAtTime(44,t+.13);decayEnv(g,t,.003,peak,t+.32);o.connect(g);route(E,g,.04);o.start(t);o.stop(t+.35);}
+function drums(E,col,t){
+  const b=state.beat;if(b==="none")return;const s=col%8;
+  if(b==="light"){if(s===0)kick(E,t,.42);if(s===4)noiseHit(E,t,"bandpass",2200,.1,.1,.2);if(s%2===0)noiseHit(E,t,"highpass",7500,.035,.04,.1);}
+  else{if(s===0||s===3||s===4)kick(E,t,s===3?.38:.55);if(s===2||s===6)noiseHit(E,t,"bandpass",1800,.2,.14,.25);noiseHit(E,t,"highpass",7500,s%2?.035:.06,.045,.1);}
+}
+const stepDur=()=>60/state.bpm/2;
+function scheduleStep(E,col,t,live){
+  const sd=stepDur(),tt=t+(SCALES[state.scale].swing&&col%2?sd*.33:0);
+  const list=notesByStep[col]||[];
+  for(const n of list){if(state.muted[n.v])continue;playNote(E,VOICES[n.v].id,midiOf(n),tt,n.dur*sd,n.vel*(n.blk?.8:1));if(live)vis.push({t:tt,n});}
+  drums(E,col,tt);
+}
+
+/* ---------- 即時播放 ---------- */
+let AC=null,LE=null,playing=false,timer=null,nextT=0,curCol=0,sweepN=0,marks=[],vis=[],parts=[];
+function ensureAC(){if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();LE=makeEngine(AC,AC.destination);}}
+function startPlay(){
+  if(!grid)return;ensureAC();AC.resume();
+  playing=true;nextT=AC.currentTime+.08;curCol=0;sweepN=0;marks=[];vis=[];
+  clearInterval(timer);timer=setInterval(tick,25);tick();
+  $("startOver").hidden=true;setPlayIcon();
+}
+function stopPlay(){playing=false;clearInterval(timer);timer=null;vis=[];setPlayIcon();$("sweepLbl").textContent=grid?"已暫停":"準備好了";}
+function tick(){
+  if(!playing)return;const sd=stepDur();
+  while(nextT<AC.currentTime+.16){
+    if(curCol>=grid.steps)curCol=0;
+    scheduleStep(LE,curCol,nextT,true);marks.push({col:curCol,t:nextT,sw:sweepN});if(marks.length>12)marks.shift();
+    nextT+=sd;curCol++;if(curCol>=grid.steps){curCol=0;sweepN++;}
+  }
+}
+const PLAY_SVG='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',PAUSE_SVG='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5.5" y="4.5" width="4.5" height="15" rx="1.5"/><rect x="14" y="4.5" width="4.5" height="15" rx="1.5"/></svg>';
+function setPlayIcon(){const b=$("playBtn");b.innerHTML=playing?PAUSE_SVG:PLAY_SVG;b.setAttribute("aria-label",playing?"暫停":"播放");}
+setPlayIcon();
+$("playBtn").onclick=()=>playing?stopPlay():startPlay();
+$("bigPlay").onclick=startPlay;
+
+/* ---------- 舞台畫面 ---------- */
+const stageCv=$("stageCv"),stage={w:0,h:0};
+function layoutStage(){
+  if(!rectCanvas||stepNow!==3)return;
+  const wrap=$("stageWrap"),maxW=wrap.clientWidth-28,maxH=Math.max(220,window.innerHeight*.58),a=rectCanvas.width/rectCanvas.height;
+  let w=maxW,h=w/a;if(h>maxH){h=maxH;w=h*a;}
+  stage.w=w;stage.h=h;stageCv.style.width=w+"px";stageCv.style.height=h+"px";stageCv.width=Math.round(w*dpr());stageCv.height=Math.round(h*dpr());
+  $("startOver").hidden=playing;
+}
+function shape(x,kind,cx,cy,r){
+  x.beginPath();
+  if(kind==="circle")x.arc(cx,cy,r,0,Math.PI*2);
+  else if(kind==="ring"){x.arc(cx,cy,r,0,Math.PI*2);x.moveTo(cx+r*.55,cy);x.arc(cx,cy,r*.55,0,Math.PI*2,true);}
+  else if(kind==="square")x.rect(cx-r*.85,cy-r*.85,r*1.7,r*1.7);
+  else if(kind==="tri"){x.moveTo(cx,cy-r);x.lineTo(cx+r*.95,cy+r*.7);x.lineTo(cx-r*.95,cy+r*.7);x.closePath();}
+  else{x.moveTo(cx,cy-r);x.lineTo(cx+r,cy);x.lineTo(cx,cy+r);x.lineTo(cx-r,cy);x.closePath();}
+}
+const bandEls=[];
+function frame(){
+  requestAnimationFrame(frame);
+  if(stepNow!==3||!rectCanvas||!stage.w)return;
+  const x=stageCv.getContext("2d"),k=dpr(),W=stage.w,H=stage.h,steps=grid.steps;
+  x.setTransform(k,0,0,k,0,0);x.clearRect(0,0,W,H);x.drawImage(rectCanvas,0,0,W,H);
+  const cw=W/steps,ch=H/ROWS;
+  if(state.grid){
+    x.fillStyle="rgba(255,255,255,.35)";x.fillRect(0,0,W,H);
+    notesByStep.forEach(a=>a.forEach(n=>{x.globalAlpha=state.muted[n.v]?.25:.9;x.fillStyle=VOICES[n.v].fx;const r=Math.min(cw,ch)*.32;
+      x.beginPath();x.roundRect?x.roundRect(n.col*cw+cw*.18,n.row*ch+ch/2-r,cw*n.dur-cw*.36,r*2,r):x.rect(n.col*cw+cw*.18,n.row*ch+ch/2-r,cw*n.dur-cw*.36,r*2);x.fill();}));
+    x.globalAlpha=1;
+  }
+  let bx=-100;
+  if(playing&&AC){
+    const now=AC.currentTime,sd=stepDur();let m=null;
+    for(let i=marks.length-1;i>=0;i--)if(marks[i].t<=now){m=marks[i];break;}
+    if(m){const pos=m.col+clamp((now-m.t)/sd,0,1);bx=pos/steps*W;$("sweepLbl").textContent=`第 ${m.sw+1} 遍`;}
+    while(vis.length&&vis[0].t<=now){const e=vis.shift(),n=e.n;parts.push({x:(n.col+.5)*cw,y:(n.row+.5)*ch,v:n.v,t0:performance.now(),blk:n.blk});
+      const el=bandEls[n.v];if(el){el.classList.remove("hit");void el.offsetWidth;el.classList.add("hit");}}
+    if(bx>=0){
+      const g=x.createLinearGradient(bx-46,0,bx,0);g.addColorStop(0,"rgba(10,172,163,0)");g.addColorStop(1,"rgba(10,172,163,.32)");
+      x.fillStyle=g;x.fillRect(bx-46,0,46,H);
+      x.fillStyle="#fff";x.fillRect(bx-3,0,6,H);x.fillStyle="#0aaca3";x.fillRect(bx-1.5,0,3,H);
+    }
+  }
+  $("rider").style.transform=`translateX(${bx}px)`;$("rider").style.opacity=bx>=0?1:0;
+  const nowP=performance.now();
+  parts=parts.filter(p=>nowP-p.t0<750);
+  for(const p of parts){const a=(nowP-p.t0)/750,V=VOICES[p.v],r=Math.min(cw,ch)*(.45+a*1.4)*(p.blk?1.3:1);
+    x.globalAlpha=1-a;x.fillStyle=V.fx;shape(x,V.shape,p.x,p.y-a*10,r);x.fill("evenodd");x.lineWidth=2;x.strokeStyle="#fff";x.stroke();}
+  x.globalAlpha=1;
+}
+requestAnimationFrame(frame);
+
+/* ---------- 選項 ---------- */
+function chipGroup(el,items,get,set,cls=""){
+  el.innerHTML="";
+  items.forEach(([val,label,sub])=>{const b=document.createElement("button");b.type="button";b.className="chip "+cls;b.innerHTML=label+(sub?`<small>${sub}</small>`:"");
+    b.setAttribute("aria-pressed",String(get()===val));b.onclick=()=>{set(val);[...el.children].forEach(c=>c.setAttribute("aria-pressed",String(c===b)));};el.appendChild(b);});
+}
+chipGroup($("scaleChips"),Object.entries(SCALES).map(([k,s])=>[k,s.name,s.desc]),()=>state.scale,v=>state.scale=v);
+chipGroup($("keyChips"),KEYS.map(([n,v])=>[v,n]),()=>state.key,v=>state.key=v,"k");
+chipGroup($("loopChips"),[[1,"1 遍"],[2,"2 遍"],[4,"4 遍"]],()=>state.loops,v=>state.loops=v,"k");
+$("tempo").oninput=e=>{state.bpm=+e.target.value;$("tempoOut").textContent=state.bpm+" BPM";};
+$("gridTog").onchange=e=>state.grid=e.target.checked;
+$("refixBtn").onclick=()=>go(2);
+$("newBtn").onclick=()=>go(1);
+function renderBand(cnt){
+  const el=$("band");el.innerHTML="";bandEls.length=0;
+  VOICES.forEach((V,i)=>{const b=document.createElement("button");b.type="button";b.className="member";b.setAttribute("aria-pressed",String(!state.muted[i]));
+    b.innerHTML=`${svgOf(V.char)}<span class="nm">${V.char}<small>${V.inst}</small></span><span class="cnt"><span class="dots">${V.dots.map(c=>`<i style="background:${c}"></i>`).join("")}</span>${cnt[i]} 個音</span>`;
+    b.onclick=()=>{state.muted[i]=!state.muted[i];b.setAttribute("aria-pressed",String(!state.muted[i]));};
+    el.appendChild(b);bandEls.push(b);});
+}
+window.addEventListener("resize",()=>{layoutFix();layoutStage();});
+
+/* ---------- 下載音檔 ---------- */
+$("dlBtn").onclick=()=>{if(!grid)return;$("dlModal").hidden=false;$("dlMsg").textContent="";$("dlProg").hidden=true;$("makeBtn").disabled=false;};
+let exporting=false;
+$("dlX").onclick=()=>{if(!exporting)$("dlModal").hidden=true;};
+async function getDownloads(){try{if(window.claude&&typeof window.claude.use==="function")return await window.claude.use("downloads");}catch(e){}return null;}
+function toWav(buf){
+  const ch=buf.numberOfChannels,len=buf.length,sr=buf.sampleRate,ab=new ArrayBuffer(44+len*ch*2),v=new DataView(ab);
+  const ws=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  ws(0,"RIFF");v.setUint32(4,36+len*ch*2,true);ws(8,"WAVE");ws(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,ch,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*ch*2,true);v.setUint16(32,ch*2,true);v.setUint16(34,16,true);ws(36,"data");v.setUint32(40,len*ch*2,true);
+  const data=[];for(let c=0;c<ch;c++)data.push(buf.getChannelData(c));let o=44;
+  for(let i=0;i<len;i++)for(let c=0;c<ch;c++){const s=clamp(data[c][i],-1,1);v.setInt16(o,s<0?s*32768:s*32767,true);o+=2;}
+  return new Blob([ab],{type:"audio/wav"});
+}
+function recordBuffer(rc,buf,onP){
+  return new Promise((res,rej)=>{
+    const mime=["audio/webm;codecs=opus","audio/webm","audio/mp4;codecs=mp4a.40.2","audio/mp4"].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));
+    if(!mime){rej(new Error("norec"));return;}
+    const dst=rc.createMediaStreamDestination(),s=rc.createBufferSource();s.buffer=buf;s.connect(dst);s.connect(rc.destination);
+    const r=new MediaRecorder(dst.stream,{mimeType:mime,audioBitsPerSecond:192000}),chunks=[];
+    r.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+    r.onstop=()=>res({blob:new Blob(chunks,{type:mime}),ext:mime.includes("mp4")?"mp4":"webm"});
+    r.start(250);s.start(rc.currentTime+.05);
+    const t0=performance.now(),iv=setInterval(()=>onP(Math.min(1,(performance.now()-t0)/1000/buf.duration)),200);
+    s.onended=()=>{clearInterval(iv);onP(1);setTimeout(()=>r.stop(),200);};
+  });
+}
+$("makeBtn").onclick=async()=>{
+  if(exporting)return;exporting=true;stopPlay();
+  const btn=$("makeBtn"),msg=$("dlMsg"),prog=$("dlProg"),bar=prog.querySelector("i");
+  btn.disabled=true;prog.hidden=false;bar.style.width="5%";msg.textContent="正在把畫變成音樂…";
+  let rc=null;
+  try{rc=new (window.AudioContext||window.webkitAudioContext)();rc.resume();}catch(e){}
+  try{
+    const sd=stepDur(),steps=grid.steps,total=state.loops*steps*sd+2.8,sr=44100;
+    const oc=new OfflineAudioContext(2,Math.ceil(total*sr),sr),E=makeEngine(oc,oc.destination);
+    for(let l=0;l<state.loops;l++)for(let col=0;col<steps;col++)scheduleStep(E,col,.05+(l*steps+col)*sd,false);
+    const buf=await oc.startRendering();
+    bar.style.width="12%";
+    const stamp=new Date(),name=`NUMINA畫聲_${stamp.getMonth()+1}月${stamp.getDate()}日_${SCALES[state.scale].name}`;
+    const dl=await getDownloads(),inClaude=!!(window.claude&&window.claude.use);
+    if(dl){
+      msg.textContent="錄音中，會同時播放一次給你聽…";
+      const out=await recordBuffer(rc,buf,p=>{bar.style.width=(12+p*88)+"%";});
+      msg.textContent="錄好了！請在跳出的視窗確認下載。";
+      try{await dl.save({filename:`${name}.${out.ext}`,data:out.blob});msg.textContent="音檔已下載。";toast("音檔已下載");}
+      catch(e){msg.textContent=e&&e.code==="declined"?"你取消了下載，可以再按一次「開始錄音」。":"這個畫面目前無法下載檔案。";}
+    }else if(!inClaude){
+      const blob=toWav(buf),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`${name}.wav`;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),4000);bar.style.width="100%";msg.textContent="音檔（WAV）已下載。";
+    }else{
+      msg.textContent="這個畫面目前無法下載檔案，請在 claude.ai 開啟這個作品頁面再試一次。";
+    }
+  }catch(e){
+    msg.textContent=e&&e.message==="norec"?"這個瀏覽器不支援錄音，請改用 Chrome、Edge 或 Safari。":"產生音檔時出了問題，請再試一次。";
+  }finally{
+    if(rc)try{rc.close();}catch(e){}
+    exporting=false;btn.disabled=false;
+  }
+};
+
+/* ---------- 示範畫：畫在紙上、斜放在桌上 ---------- */
+function makeDemo(){
+  const PW=1100,PH=780,p=mk(PW,PH),x=p.getContext("2d");
+  const pg=x.createLinearGradient(0,0,PW,PH);pg.addColorStop(0,"#fbfaf4");pg.addColorStop(1,"#efede4");x.fillStyle=pg;x.fillRect(0,0,PW,PH);
+  x.lineCap="round";x.lineJoin="round";
+  const wob=(a)=>a+(Math.random()-.5)*4;
+  // 綠色山丘（貝斯）
+  x.fillStyle="#2ea84a";x.beginPath();x.moveTo(40,740);
+  for(let i=0;i<=20;i++){const xx=40+i*51,yy=650-Math.max(0,Math.sin(i/20*Math.PI*3))*70;x.lineTo(xx,yy);}x.lineTo(1060,740);x.closePath();x.fill();
+  // 藍色河流（長笛）
+  x.strokeStyle="#2b70c9";x.lineWidth=14;x.beginPath();for(let i=0;i<=60;i++){const xx=60+i*16.5,yy=470+Math.sin(i/60*Math.PI*4)*55;i?x.lineTo(xx,wob(yy)):x.moveTo(xx,yy);}x.stroke();
+  // 黑色樓梯（鋼琴）與小鳥
+  x.strokeStyle="#22302f";x.lineWidth=11;x.beginPath();x.moveTo(70,400);
+  [[150,400],[150,350],[230,350],[230,300],[310,300],[310,250],[390,250],[390,200],[470,200]].forEach(q=>x.lineTo(wob(q[0]),wob(q[1])));x.stroke();
+  [[640,160],[720,120],[810,180],[900,140]].forEach(([bx,by])=>{x.beginPath();x.moveTo(bx-26,by-12);x.quadraticCurveTo(bx-10,by-14,bx,by+4);x.quadraticCurveTo(bx+10,by-14,bx+26,by-12);x.stroke();});
+  // 紅色花朵 zigzag（撥弦）
+  x.strokeStyle="#e83e48";x.lineWidth=11;x.beginPath();x.moveTo(560,420);for(let i=1;i<=9;i++)x.lineTo(560+i*40,i%2?340:420);x.stroke();
+  // 橘色太陽與黃色星星（音樂盒）
+  x.fillStyle="#ff9600";x.beginPath();x.arc(960,90,46,0,Math.PI*2);x.fill();
+  x.fillStyle="#f2c400";[[120,110],[230,70],[340,130],[470,90],[560,60]].forEach(([sx,sy])=>{x.beginPath();x.arc(sx,sy,15,0,Math.PI*2);x.fill();});
+  x.fillStyle="#ff9600";[[180,560],[300,580],[420,560],[540,590]].forEach(([sx,sy])=>{x.beginPath();x.arc(sx,sy,13,0,Math.PI*2);x.fill();});
+  // 紫色雲（長笛）
+  x.fillStyle="#8a5cc9";x.beginPath();x.ellipse(820,280,70,26,0,0,Math.PI*2);x.fill();
+  // 桌面
+  const W=1400,H=1050,c=mk(W,H),y=c.getContext("2d");
+  const tg=y.createLinearGradient(0,0,W,H);tg.addColorStop(0,"#5b4636");tg.addColorStop(1,"#3a2c22");y.fillStyle=tg;y.fillRect(0,0,W,H);
+  y.strokeStyle="rgba(255,255,255,.05)";y.lineWidth=3;for(let i=0;i<40;i++){y.beginPath();y.moveTo(0,i*30+Math.random()*10);y.bezierCurveTo(400,i*30+20,900,i*30-20,W,i*30+Math.random()*10);y.stroke();}
+  const Q=[[250,170],[1185,232],[1255,925],[160,860]];
+  y.fillStyle="rgba(0,0,0,.35)";y.beginPath();y.moveTo(Q[0][0]+14,Q[0][1]+18);Q.forEach(q=>y.lineTo(q[0]+14,q[1]+18));y.closePath();y.fill();
+  const out=y.getImageData(0,0,W,H),pd=x.getImageData(0,0,PW,PH);
+  const h=homog(Q,[[0,0],[PW,0],[PW,PH],[0,PH]]);
+  // 只在紙的範圍內貼上
+  const minX=Math.floor(Math.min(...Q.map(q=>q[0]))),maxX=Math.ceil(Math.max(...Q.map(q=>q[0]))),minY=Math.floor(Math.min(...Q.map(q=>q[1]))),maxY=Math.ceil(Math.max(...Q.map(q=>q[1])));
+  const od=out.data,sd=pd.data;
+  for(let yy=minY;yy<maxY;yy++)for(let xx=minX;xx<maxX;xx++){
+    const [sx,sy]=apH(h,xx+.5,yy+.5);if(sx<0||sy<0||sx>=PW-1||sy>=PH-1)continue;
+    const si=((sy|0)*PW+(sx|0))*4,o=(yy*W+xx)*4,shade=.9+.1*(1-yy/H);
+    od[o]=sd[si]*shade;od[o+1]=sd[si+1]*shade;od[o+2]=sd[si+2]*shade;
+  }
+  y.putImageData(out,0,0);
+  return c;
+}
+</script>
+</body>
+</html>

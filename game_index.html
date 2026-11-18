@@ -21,6 +21,7 @@
   --c1: #00B1E0; --c1-soft: #D9FFFF;
   --c2: #FF9600; --c2-soft: #FFF0DA;
   --c3: #2B70C9; --c3-soft: #E1ECFA;
+  --c4: #E83E48; --c4-soft: #FDE4E5;
   --font-display: 'Chiron GoRound TC', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
   --font-body: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
 }
@@ -31,6 +32,7 @@
     --c1: #6DE2F3; --c1-soft: #12363D;
     --c2: #FFB547; --c2-soft: #3A2A12;
     --c3: #7FAEF0; --c3-soft: #1B2A40;
+    --c4: #FF8A90; --c4-soft: #3D1C1F;
     color-scheme: dark;
   }
 }
@@ -40,6 +42,7 @@
   --c1: #6DE2F3; --c1-soft: #12363D;
   --c2: #FFB547; --c2-soft: #3A2A12;
   --c3: #7FAEF0; --c3-soft: #1B2A40;
+  --c4: #FF8A90; --c4-soft: #3D1C1F;
   color-scheme: dark;
 }
 
@@ -80,10 +83,10 @@ main .wrap { padding-block: 36px 56px; }
 .games {
   list-style: none; margin: 0; padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
-@media (max-width: 860px) { .games { grid-template-columns: 1fr; } }
+@media (max-width: 680px) { .games { grid-template-columns: 1fr; } }
 
 .game {
   --c: var(--c1); --soft: var(--c1-soft);
@@ -98,6 +101,7 @@ main .wrap { padding-block: 36px 56px; }
 }
 .game.g2 { --c: var(--c2); --soft: var(--c2-soft); }
 .game.g3 { --c: var(--c3); --soft: var(--c3-soft); }
+.game.g4 { --c: var(--c4); --soft: var(--c4-soft); }
 .game:hover { border-color: var(--c); transform: translateY(-4px); box-shadow: 0 10px 0 -4px var(--c); }
 .game:focus-visible { outline: 3px solid var(--c); outline-offset: 3px; }
 
@@ -138,7 +142,7 @@ footer .wrap { padding-block: 0 32px; font-size: .85rem; color: var(--muted); }
   <div class="wrap">
     <div class="eyebrow">NUMINA 數感實驗室</div>
     <h1>數感遊戲場</h1>
-    <p>用地圖、聲音和拼圖玩數學。挑一個遊戲，開始探索身邊的數感！</p>
+    <p>用地圖、聲音、拼圖和畫畫玩數學。挑一個遊戲，開始探索身邊的數感！</p>
     <svg class="shapes" viewBox="0 0 220 160" aria-hidden="true">
       <circle cx="50" cy="60" r="34" fill="#6DE2F3"/>
       <polygon points="140,20 190,100 90,100" fill="#FF9600"/>
@@ -187,12 +191,24 @@ footer .wrap { padding-block: 0 32px; font-size: .85rem; color: var(--muted); }
           <span class="btn">開始遊戲 <span aria-hidden="true">→</span></span>
         </a>
       </li>
+      <li>
+        <a class="game g4" href="game/畫聲掃描機.html">
+          <span class="badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/><path d="M7 15c2-5 3-5 5-2s3 3 5-3"/></svg>
+          </span>
+          <span class="num">GAME 04</span>
+          <h2 class="name">畫聲掃描機</h2>
+          <p class="desc">畫一張圖再掃描，數感宇宙的朋友會把它演奏出來。畫得越高聲音越高，越左邊越早被演奏！</p>
+          <span class="tags"><span class="tag">需要攝影機</span><span class="tag">座標與音高</span></span>
+          <span class="btn">開始遊戲 <span aria-hidden="true">→</span></span>
+        </a>
+      </li>
     </ul>
   </div>
 </main>
 
 <footer>
-  <div class="wrap">聲紋試衣間與音樂拼圖樂團需要允許瀏覽器使用麥克風／攝影機。</div>
+  <div class="wrap">聲紋試衣間需要麥克風；音樂拼圖樂團與畫聲掃描機需要攝影機（畫聲掃描機也可從相簿選圖）。</div>
 </footer>
 
 </body>
