@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拍照小幫手</title>
+<style>
+:root { --bg:#f3f5f8; --surface:#fff; --ink:#1b2430; --muted:#5d6877; --line:#d9dee6; --pen:#d93025; --ok:#1a8a5a; }
+@media (prefers-color-scheme: dark) { :root { --bg:#12161c; --surface:#1a2029; --ink:#e8ecf2; --muted:#9aa5b4; --line:#2c3542; --pen:#ff6b5e; --ok:#4cc38a; color-scheme:dark; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; font-size:15px; }
+header { background:var(--surface); border-bottom:1px solid var(--line); padding:12px 20px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+h1 { margin:0; font-size:20px; }
+main { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:20px; padding:20px; }
+@media (max-width:860px){ main{ grid-template-columns:minmax(0,1fr);} }
+.stage { background:#000; border-radius:10px; display:flex; align-items:center; justify-content:center; min-height:360px; overflow:hidden; }
+video { max-width:100%; max-height:calc(100vh - 120px); display:block; }
+aside { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px; display:grid; gap:12px; align-content:start; }
+button, select { font:inherit; color:inherit; }
+.btn { border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:10px 14px; cursor:pointer; width:100%; }
+.btn.primary { background:var(--pen); border-color:var(--pen); color:#fff; font-size:18px; font-weight:700; }
+select { width:100%; padding:8px; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
+.msg { margin:0; font-size:14px; }
+.msg.ok { color:var(--ok); font-weight:700; } .msg.err { color:var(--pen); }
+.note { margin:0; font-size:13px; color:var(--muted); }
+#thumb { width:100%; border-radius:6px; border:1px solid var(--line); }
+kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:13px; }
+</style>
+</head>
+<body>
+<header><h1>拍照小幫手</h1><span class="note">用筆電攝影機拍作業，拍完自動複製，回到「作業批改台」按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼上</span></header>
+<main>
+  <div class="stage"><video id="v" playsinline muted autoplay></video></div>
+  <aside>
+    <select id="cams" aria-label="選擇攝影機"></select>
+    <button class="btn primary" id="shot" type="button">拍照（空白鍵）</button>
+    <p class="msg" id="msg">正在開啟攝影機…</p>
+    <img id="thumb" alt="剛拍的照片" hidden>
+    <button class="btn" id="copy" type="button" hidden>再複製一次</button>
+    <button class="btn" id="save" type="button" hidden>另存成圖片檔</button>
+    <a class="btn" style="text-align:center;text-decoration:none" href="https://claude.ai/artifact/1fidyTWobouYwfdJbvpG4P" target="grader">開啟作業批改台</a>
+    <p class="note">第一次使用時，瀏覽器會詢問是否允許使用攝影機，請按「允許」。建議用 Chrome 或 Edge 開啟這個檔案。</p>
+  </aside>
+</main>
+<script>
+const v = document.getElementById("v"), msg = document.getElementById("msg"), cams = document.getElementById("cams");
+let stream = null, lastBlob = null;
+function say(t, cls) { msg.textContent = t; msg.className = "msg" + (cls ? " " + cls : ""); }
+async function start(id) {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio:false, video: Object.assign({ width:{ideal:3840}, height:{ideal:2160} }, id ? { deviceId:{exact:id} } : {}) });
+    v.srcObject = stream; await v.play().catch(()=>{});
+    const list = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+    const cur = stream.getVideoTracks()[0].getSettings().deviceId;
+    cams.replaceChildren(...list.map((d,i) => { const o = document.createElement("option"); o.value = d.deviceId; o.textContent = d.label || "攝影機 " + (i+1); o.selected = d.deviceId === cur; return o; }));
+    cams.hidden = list.length < 2;
+    say("對準作業後按「拍照」。");
+  } catch (e) {
+    say("無法開啟攝影機：請確認已允許攝影機權限，且沒有其他程式（如視訊會議）正在使用它。", "err");
+  }
+}
+cams.onchange = () => start(cams.value);
+async function copyBlob(b) {
+  try { await navigator.clipboard.write([new ClipboardItem({ "image/png": b })]); say("已複製！到作業批改台按 Ctrl+V 貼上。", "ok"); }
+  catch { say("自動複製失敗，請按「另存成圖片檔」後在批改台上傳。", "err"); }
+}
+async function shoot() {
+  if (!v.videoWidth) return;
+  const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext("2d").drawImage(v, 0, 0);
+  lastBlob = await new Promise(r => c.toBlob(r, "image/png"));
+  const t = document.getElementById("thumb"); if (t.src) URL.revokeObjectURL(t.src); t.src = URL.createObjectURL(lastBlob); t.hidden = false;
+  document.getElementById("copy").hidden = false; document.getElementById("save").hidden = false;
+  copyBlob(lastBlob);
+}
+document.getElementById("shot").onclick = shoot;
+document.getElementById("copy").onclick = () => lastBlob && copyBlob(lastBlob);
+document.getElementById("save").onclick = () => {
+  if (!lastBlob) return;
+  const a = document.createElement("a"); const d = new Date();
+  a.href = URL.createObjectURL(lastBlob); a.download = `作業-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}-${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}${String(d.getSeconds()).padStart(2,"0")}.png`;
+  a.click();
+};
+document.addEventListener("keydown", e => { if (e.code === "Space" && e.target.tagName !== "SELECT") { e.preventDefault(); shoot(); } });
+start();
+</script>
+</body>
+</html>
